@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserva de sala de evento</title>
+    <input type="hidden" id="idRecurso" value="4">
+
+</head>
+<body class="body1">
+    <header class="flex items-center justify-between p-4 border-b border-gray-200">
+        <div class="flex items-center">
+            <div class="w-16 h-16 bg-gray-200 flex items-center justify-center">
+                <span class="text-gray-500">Logo</span>
+            </div>
+            <nav class="ml-8">
+                <ul class="flex space-x-4">
+                    <li><button class="px-4 py-2 bg-gray-300 text-white rounded">Inicio</button></li>
+                    <li><button class="px-4 py-2 bg-gray-100 text-gray-700 rounded">Solicitudes</button></li>
+                    <li><button class="px-4 py-2 bg-gray-100 text-gray-700 rounded">Miembros</button></li>
+                    <li><button class="px-4 py-2 bg-gray-100 text-gray-700 rounded">Ayuda</button></li>
+                </ul>
+            </nav>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="w-16 h-16 bg-gray-200"></div>
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-search text-gray-500"></i>
+                <span class="text-gray-500">Search</span>
+            </div>
+        </div>
+    </header>
+    <h1 class="header1">Reserva de sala de evento</h1>
+    <p>
+        Para reservar necesitas iniciar sesión
+        <ul>
+            <li>Lunes: 09:00 a 18:00</li>
+            <li>Martes: 09:00 a 18:00</li>
+            <li>Miércoles: 09:00 a 18:00</li>
+            <li>Jueves: 09:00 a 18:00</li>
+            <li>Viernes: 09:00 a 18:00</li>
+            <li>Sábado: 10:00 a 16:00</li>
+            <li>Domingo: No hay horarios disponibles</li>
+        </ul>
+    </p>
+    <div class="flex space-x-8">
+        <div class="w-64">
+            <div id="calendar" class="border border-gray-300 rounded p-4 calendar"></div>
+        </div>
+        <div>
+            <h3 class="text-lg font-semibold mb-2 dropdowntitle">Horarios disponibles:</h3>
+            <div class="border border-gray-300 rounded p-2 dropdowntitle">
+                <select id="scheduleDropdown" class="w-full p-2 border border-gray-300 rounded dropdownselection">
+                    <option>Selecciona un horario</option>
+                </select>
+            </div>
+            <div class="border border-gray-300 rounded p-2 dropdowntitle">
+                <select id="motivoDropdown" class="w-full p-2 border border-gray-300 rounded dropdownselection">
+                    <option>Selecciona un motivo</option>
+                </select>
+            </div>
+        </div>
+        <div>
+            <button id="reservarBtn" class="px-8 py-2 border border-gray-300 rounded reservabutton">Reservar</button>
+        </div>
+    </div>
+    <!-- formulario de ejemplo -->
+    <form id="reservaForm">
+        <label for="idUsuario">ID Usuario (ejemplo):</label>
+        <input type="number" value="3333" id="idUsuario" name="idUsuario" placeholder="Ingresa ID de Usuario" required>
+        <p id="usuarioMensaje"></p>        
+    </form>
+    
+    <!-- Bibliotecas -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.js"></script>
+    <script src="script_calendario.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css" />
+    <link rel="stylesheet" href="style_calendario.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    
+</body>
+</html>

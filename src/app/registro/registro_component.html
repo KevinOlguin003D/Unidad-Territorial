@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+  <link rel="stylesheet" href="registro_component.css">
+<div class="register-container">
+    <div class="register-card">
+      <h2>Crear una cuenta</h2>
+      <p class="subtitle">Completa el formulario para registrarte</p>
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="rut">RUT</label>
+          <input type="text" id="rut" formControlName="rut" placeholder="Ingresa tu RUT">
+          <div class="error-message" *ngIf="registerForm.get('rut')?.invalid && (registerForm.get('rut')?.dirty || registerForm.get('rut')?.touched)">
+            <span *ngIf="registerForm.get('rut')?.errors?.['required']">El RUT es requerido.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="primer_nombre">Primer Nombre</label>
+          <input type="text" id="primer_nombre" formControlName="primer_nombre" placeholder="Ingresa tu primer nombre">
+          <div class="error-message" *ngIf="registerForm.get('primer_nombre')?.invalid && (registerForm.get('primer_nombre')?.dirty || registerForm.get('primer_nombre')?.touched)">
+            <span *ngIf="registerForm.get('primer_nombre')?.errors?.['required']">El primer nombre es requerido.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="segundo_nombre">Segundo Nombre</label>
+          <input type="text" id="segundo_nombre" formControlName="segundo_nombre" placeholder="Ingresa tu segundo nombre">
+        </div>
+        <div class="form-group">
+          <label for="apellido_paterno">Apellido Paterno</label>
+          <input type="text" id="apellido_paterno" formControlName="apellido_paterno" placeholder="Ingresa tu apellido paterno">
+          <div class="error-message" *ngIf="registerForm.get('apellido_paterno')?.invalid && (registerForm.get('apellido_paterno')?.dirty || registerForm.get('apellido_paterno')?.touched)">
+            <span *ngIf="registerForm.get('apellido_paterno')?.errors?.['required']">El apellido paterno es requerido.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="apellido_materno">Apellido Materno</label>
+          <input type="text" id="apellido_materno" formControlName="apellido_materno" placeholder="Ingresa tu apellido materno">
+          <div class="error-message" *ngIf="registerForm.get('apellido_materno')?.invalid && (registerForm.get('apellido_materno')?.dirty || registerForm.get('apellido_materno')?.touched)">
+            <span *ngIf="registerForm.get('apellido_materno')?.errors?.['required']">El apellido materno es requerido.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="correo">Correo electrónico</label>
+          <input type="email" id="correo" formControlName="correo" placeholder="Ingresa tu correo electrónico">
+          <div class="error-message" *ngIf="registerForm.get('correo')?.invalid && (registerForm.get('correo')?.dirty || registerForm.get('correo')?.touched)">
+            <span *ngIf="registerForm.get('correo')?.errors?.['required']">El correo electrónico es requerido.</span>
+            <span *ngIf="registerForm.get('correo')?.errors?.['email']">Ingresa un correo electrónico válido.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="telefono">Teléfono</label>
+          <input type="tel" id="telefono" formControlName="telefono" placeholder="Ingresa tu número de teléfono">
+          <div class="error-message" *ngIf="registerForm.get('telefono')?.invalid && (registerForm.get('telefono')?.dirty || registerForm.get('telefono')?.touched)">
+            <span *ngIf="registerForm.get('telefono')?.errors?.['required']">El teléfono es requerido.</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="direccion">Dirección</label>
+          <input type="text" id="direccion" formControlName="direccion" placeholder="Ingresa tu dirección">
+          <div class="error-message" *ngIf="registerForm.get('direccion')?.invalid && (registerForm.get('direccion')?.dirty || registerForm.get('direccion')?.touched)">
+            <span *ngIf="registerForm.get('direccion')?.errors?.['required']">La dirección es requerida.</span>
+          </div>
+        </div>
+        <div class="form-group">
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" formControlName="password" placeholder="Ingresa tu contraseña"
+                   [ngClass]="{'invalid': registerForm.get('password')?.invalid && (registerForm.get('password')?.dirty || registerForm.get('password')?.touched)}">
+            <div class="error-message" *ngIf="registerForm.get('password')?.invalid && (registerForm.get('password')?.dirty || registerForm.get('password')?.touched)">
+              <span *ngIf="registerForm.get('password')?.errors?.['required']">La contraseña es requerida.</span>
+              <span *ngIf="registerForm.get('password')?.errors?.['minlength']">La contraseña debe tener al menos 6 caracteres.</span>
+            </div>
+          </div>
+        <button type="submit" [disabled]="!registerForm.valid">Registrarse</button>
+      </form>
+      <p class="login-link">¿Ya tienes una cuenta? <a href="../login/login_component.html">Iniciar sesión</a></p>
+    </div>
+  </div>

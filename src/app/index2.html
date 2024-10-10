@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <h1 style="text-align: center;">Unidad Vecinal</h1>
+        <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+          h1 {
+            color: #17f407;
+          }
+          body {
+            font-family: Arial, Helvetica, sans-serif;
+          }
+        </style>
+        <link rel="stylesheet" href="app.component.css">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&amp;display=swap" rel="stylesheet"/>
+        <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+          body { 
+            background-image: url('../imagenes/image.png');
+            background-repeat: no-repeat;
+            background-size: cover;
+          }
+        </style>
+    </head>
+    <body class="font-roboto">
+      <div class="container">
+       <div class="flex">
+        <img alt="Logo" class="w-12 h-12" height="50" src="data:image/png;base64,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" width="50"/>
+        <nav class="ml-10 space-x-4">
+         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="">
+          Solicitudes
+         </a>
+         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="reserva/home_reserva.html">
+          Reservas
+         </a>
+         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="#">
+          Noticias
+         </a>
+         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="login/login_component.html">
+          Miembros
+         </a>
+         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="#">
+          Ayuda
+         </a>
+        </nav>
+       </div>
+       <div class="flex">
+        <i class="fas fa-search text-green-500">
+        </i>
+        <span class="ml-2 text-green-500">
+          <input type="text" placeholder="Buscar...">
+          <input type="submit" value="Buscar">
+        </span>
+       </div>
+      </div>
+     </body>
+     <body>
+  <section class="section">
+    <h2 style="text-align: center;">Noticias</h2>
+    <div class="grid">
+      <div>
+        <img src="https://www.goreohiggins.cl/images/notas/WhatsApp_Image_2024-06-12_at_3.15.30_PM.jpeg" alt="Noticia 1">
+        <h3>Juntas de vecinos en O’Higgins se organizan para vivir en barrios más seguros con la incorporación de nuevas tecnologías</h3>
+        <p>Rancagua, lunes 10 de junio 2024.- Por medio de recursos del 8 % del Fondo Nacional de Desarrollo Regional (FNDR), Juntas de Vecinos de la región se organizaron para presentar proyectos que permitan colaborar con la seguridad de sus territorios. Respecto al año 2023, el Gobierno Regional financió un total de 111 iniciativas de Seguridad Pública avaluadas en más de mil 423 millones de pesos, las cuales se han desarrollado gradualmente en diferentes sectores de las comunas.</p>
+      </div>
+      <div>
+        <img src="https://cms.hacienda.cl/hacienda/assets/imagen/44bc0c7f44b56/1706315644/2048" alt="Noticia 2">
+        <h3>Fondo para la Reconstrucción: Comenzó recuperación de la sede Junta de Vecinos y Taller Las Tejedoras en Los Castaños en Nacimiento</h3>
+        <p>Con la presencia de varias autoridades se colocó la primera piedra para reconstruir la Sede de la Junta de Vecinos y el taller de Las Tejedoras en Los Castaños, en la comuna de Nacimiento, afectada por los incendios del verano 2023.
+
+          El jueves 18 de enero a las 15:30 horas, en el terreno de la Junta de Vecinos, ubicado en el sector Los Castaños, se congregó la comunidad local y regional encabezada por la delegada presidencial regional, Daniela Dresdner; el Seremi de Hacienda, Sebastián Rivera; el jefe de la unidad regional Subdere Biobío, Claudio Rojas; la alcaldesa (s) de Nacimiento Yael Cea; el concejal Luis Vergara; funcionarios de la Secretaría Comunal de Planificación (Secplan) y de la Dirección de Desarrollo Económico Local (Didel); la presidenta de la junta de vecinos Los Castaños y de la Agrupación de Tejedoras, Marta Peña Campos.</p>
+      </div>
+      <div>
+        <img src="https://www.munistgo.cl/wp-content/uploads/2021/05/Parque-Portales-actual-1-450x253.jpg" alt="Noticia 3">
+          <h3>Comienzan postulaciones al fondo concursable de Iniciativas Comunitarias en Matta y Yungay</h3>
+          <p>Desde hoy los vecinos de los polígonos Matta-Madrid y Portales-Matucana podrán postular al Fondo de Iniciativas Comunitarias (FIC), que busca contribuir al desarrollo de la participación ciudadana, social y cultural, en diversos ámbitos.
+          La iniciativa es fruto de la alianza entre la Subsecretaría de Desarrollo Regional y Administrativo (SUBDERE), el Banco Interamericano de Desarrollo (BID), y la I. Municipalidad de Santiago, que desarrollan este programa piloto en la comuna 
+          y que para el caso de este fondo concursable contarán con la ejecución de Santiago Innova.
+          El Alcalde de Santiago, Felipe Alessandri, destacó que “a través del programa Revive Santiago estamos abriendo este fondo que apunta a promover la asociación y el trabajo en conjunto de las organizacionales locales, para fortalecer el 
+          tejido social de los polígonos de intervención, potenciando su sentido de pertenencia, la inclusión e igualdad de oportunidades”.
+          </p>
+      </div>
+    </div>
+  </section>
+</body>
+</html>

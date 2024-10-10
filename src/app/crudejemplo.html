@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD Ejemplo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 20px;
+        }
+        table {
+            margin-top: 20px;
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>CRUD Ejemplo</h1>
+    <input type="text" id="name" placeholder="Nombre">
+    <input type="number" id="number" placeholder="Número">
+    <button id="add-data">Agregar</button>
+
+    <table id="data-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Número</th>
+                <th>Estado</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Los datos se agregarán aquí dinámicamente -->
+        </tbody>
+    </table>
+
+    <script>
+        const addDataButton = document.getElementById('add-data');
+        const nameInput = document.getElementById('name');
+        const numberInput = document.getElementById('number');
+        const tbody = document.querySelector('#data-table tbody');
+
+        addDataButton.addEventListener('click', () => {
+            const name = nameInput.value;
+            const number = numberInput.value;
+
+            if (!name || !number) {
+                alert('Por favor completa todos los campos');
+                return;
+            }
+
+            fetch('/api/ejemplos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, number, active: true })
+            })
+            .then(response => response.json())
+            .then(data => {
+                addRowToTable(data);
+                nameInput.value = '';
+                numberInput.value = '';
+            })
+            .catch(error => console.error('Error:', error));
+        });
+
+        function addRowToTable(data) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${data.id}</td>
+                <td>${data.name}</td>
+                <td>${data.number}</td>
+                <td>${data.active ? 'Activo' : 'Desactivado'}</td>
+                <td>
+                    <button onclick="toggleActive(${data.id}, this)">Activar/Desactivar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        function toggleActive(id, button) {
+            fetch(`/api/ejemplos/${id}`, {
+                method: 'PUT'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const row = button.parentNode.parentNode;
+                row.children[3].textContent = data.active ? 'Activo' : 'Desactivado';
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        // Cargar datos al inicio
+        window.onload = function() {
+            fetch('/api/ejemplos')
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(addRowToTable);
+                })
+                .catch(error => console.error('Error:', error));
+        };
+    </script>
+</body>
+</html>

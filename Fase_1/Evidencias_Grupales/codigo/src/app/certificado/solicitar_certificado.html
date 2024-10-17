@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitud de Certificado de Residencia</title>
+</head>
+<body>
+    <h2>Solicitud de Certificado de Residencia</h2>
+    
+    <form id="certificadoForm">
+        <label for="rut">RUT:</label>
+        <input type="text" id="rut" name="rut" required><br><br>
+
+        <label for="nombre">Nombre Completo:</label>
+        <input type="text" id="nombre" name="nombre" required><br><br>
+
+        <label for="domicilio">Domicilio:</label>
+        <input type="text" id="domicilio" name="domicilio" required><br><br>
+
+        <label for="motivo">Motivo de Solicitud:</label>
+        <select id="motivo" name="motivo" required>
+            <option value="trabajo">Trabajo</option>
+            <option value="estudios">Estudios</option>
+            <option value="otros">Otros</option>
+        </select><br><br>
+
+        <button type="submit">Generar Certificado</button>
+    </form>
+
+    <p id="mensaje"></p>
+
+    <script src="solicitar_certificado.js"></script>
+</body>
+</html>

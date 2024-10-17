@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 @Component({
   selector: 'app-login',
   templateUrl: './login_component.html',
-  styleUrls: ['./login._component.css']
+  styleUrls: ['./login_component.css']
 })
 export class LoginComponent implements OnInit {
   loginForm!: FormGroup;
@@ -13,7 +13,7 @@ export class LoginComponent implements OnInit {
 
   ngOnInit() {
     this.loginForm = this.fb.group({
-      username: ['', [Validators.required]],
+      correo: ['', [Validators.required]],
       password: ['', [Validators.required]]
     });
   }

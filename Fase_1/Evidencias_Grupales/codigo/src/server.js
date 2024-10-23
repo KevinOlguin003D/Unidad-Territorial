@@ -56,15 +56,15 @@ app.post('/api/actualizar-disponibilidad', (req, res) => {
 
 // Endpoint para realizar una reserva 
 app.post('/api/reservar', (req, res) => {
-    const { fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo } = req.body;
+    const { fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, id_estado_reserva} = req.body;
     console.log('Datos recibidos para la reserva:', req.body);
 
     const query = `
-        INSERT INTO reserva (fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, fecha_creacion) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO reserva (fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, fecha_creacion, id_estado_reserva) 
+        VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
     `;
 
-    connection.query(query, [fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo], (error, results) => {
+    connection.query(query, [fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, id_estado_reserva], (error, results) => {
         if (error) {
             console.error('Error al realizar la reserva:', error);
             return res.status(500).json({ error: 'Error al realizar la reserva: ' + error.message });
@@ -74,14 +74,12 @@ app.post('/api/reservar', (req, res) => {
 });
 
 
-
-
 // Endpoint para obtener horarios reservados
 app.get('/api/horariosReservados/:idRecurso/:fecha', (req, res) => {
     const { idRecurso, fecha } = req.params;
 
     const query = `
-        SELECT hora_inicio, hora_fin FROM reserva
+        SELECT hora_inicio, hora_fin, id_estado_reserva FROM reserva
         WHERE id_recurso = ? AND fecha_reserva = ?
     `;
 
@@ -93,13 +91,16 @@ app.get('/api/horariosReservados/:idRecurso/:fecha', (req, res) => {
         res.json(results);
     });
 });
+
+
+
 app.get('/api/obtenerReservas/:idRecurso', (req, res) => {
     const idRecurso = req.params.idRecurso;
     
     // Consulta a la base de datos para obtener las reservas filtradas por id_recurso
-    const query = 'SELECT * FROM reservas WHERE id_recurso = ?';
+    const query = 'SELECT * FROM reserva WHERE id_recurso = ?';
     
-    db.query(query, [idRecurso], (err, results) => {
+    connection.query(query, [idRecurso], (err, results) => {
         if (err) {
             console.error('Error al obtener las reservas:', err);
             return res.status(500).json({ error: 'Error al obtener las reservas' });
@@ -107,6 +108,63 @@ app.get('/api/obtenerReservas/:idRecurso', (req, res) => {
         res.json(results);
     });
 });
+app.get('/api/obtenerReservasUsuario/:idUsuario', (req, res) => {
+    const idUsuario = req.params.idUsuario;
+    
+    // Consulta a la base de datos para obtener las reservas filtradas por id_usuario
+    const query = `
+        SELECT r.id_reserva, 
+               r.fecha_reserva, 
+               rc.descripcion_recurso,
+               rc.id_recurso, 
+               r.id_usuario, 
+               r.hora_inicio, 
+               r.hora_fin, 
+               m.desc_motivo, 
+               r.fecha_creacion, 
+               r.id_estado_reserva
+        FROM reserva r
+        JOIN motivo m ON r.id_motivo = m.id_motivo
+        JOIN recurso rc ON r.id_recurso = rc.id_recurso
+        WHERE r.id_usuario = ?;
+    `;
+    
+    connection.query(query, [idUsuario], (err, results) => {
+        if (err) {
+            console.error('Error al obtener las reservas:', err);
+            return res.status(500).json({ error: 'Error al obtener las reservas' });
+        }
+        res.json(results);
+    });
+});
+
+// Endpoint para cancelar una reserva
+app.put('/api/cancelarReserva/:idReserva', (req, res) => {
+    const { idReserva } = req.params;
+
+    const query = `
+        UPDATE reserva
+        SET id_estado_reserva = 2 
+        WHERE id_reserva = ? AND id_estado_reserva = 1
+    `;
+
+    connection.query(query, [idReserva], (error, results) => {
+        if (error) {
+            console.error('Error al cancelar la reserva:', error);
+            return res.status(500).json({ error: 'Error al cancelar la reserva' });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: 'Reserva no encontrada o ya cancelada' });
+        }
+
+        res.json({ message: 'Reserva cancelada con éxito' });
+    });
+});
+
+
+
+
 
 // Endpoint para obtener motivos según el id_recurso
 app.get('/api/motivos/:idRecurso', (req, res) => {
@@ -141,7 +199,7 @@ app.get('/api/motivos/:idRecurso', (req, res) => {
 // Endpoint para obtener todas las reservas
 app.get('/api/obtenerReservas', (req, res) => {
     const query = `
-        SELECT r.id_reserva, r.fecha_reserva, rc.descripcion_recurso, r.id_usuario, r.hora_inicio, r.hora_fin, m.desc_motivo, r.fecha_creacion
+        SELECT r.id_reserva, r.fecha_reserva, rc.descripcion_recurso, r.id_usuario, r.hora_inicio, r.hora_fin, m.desc_motivo, r.fecha_creacion, r.id_estado_reserva
         FROM reserva r
         JOIN motivo m ON r.id_motivo = m.id_motivo
         JOIN recurso rc ON r.id_recurso = rc.id_recurso;
@@ -164,10 +222,10 @@ app.get('/api/obtenerReservas', (req, res) => {
 
 // Endpoint de registro
 app.post('/register', (req, res) => {
-    const { rut, primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password } = req.body;
+    const { rut, primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento } = req.body;
 
-    // Validar los campos requeridos 
-    if (!rut || !primerNombre || !apellidoPaterno || !apellidoMaterno || !correo || !telefono || !direccion || !password) {
+    // Validar los campos requeridos
+    if (!rut || !primerNombre || !apellidoPaterno || !apellidoMaterno || !correo || !telefono || !direccion || !password || !fechaNacimiento) {
         return res.status(400).json({ message: 'Todos los campos son requeridos, excepto el segundo nombre.' });
     }
 
@@ -198,10 +256,10 @@ app.post('/register', (req, res) => {
 
         const id_estadousuario = 1;
         const id_rol = 5; // rol por defecto
-        const insertQuery = `INSERT INTO usuario (rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, password, id_rol, id_estadousuario) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const insertQuery = `INSERT INTO usuario (rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, password, fecha_nacimiento, id_rol, id_estadousuario) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        connection.query(insertQuery, [rut, primerNombre, segundoNombre || '', apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, id_rol, id_estadousuario], (err, result) => {
+        connection.query(insertQuery, [rut, primerNombre, segundoNombre || '', apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento, id_rol, id_estadousuario], (err, result) => {
             if (err) {
                 console.error('Error ejecutando la consulta SQL:', err);
                 return res.status(500).json({ message: 'Error al registrar el usuario' });
@@ -213,25 +271,6 @@ app.post('/register', (req, res) => {
 });
 
 
-
-// Endpoint para iniciar sesión
-app.post('/login', (req, res) => {
-    const { correo, password } = req.body;
-    const query = 'SELECT * FROM usuario WHERE correo = ? AND password = ?';
-    
-    connection.query(query, [correo, password], (err, results) => {
-      if (err) {
-        console.error('Error al ejecutar la consulta', err);
-        return res.status(500).send('Error del servidor');
-      }
-      
-      if (results.length > 0) {
-        res.status(200).json({ message: 'Inicio de sesión exitoso' });
-      } else {
-        res.status(401).json({ message: 'Correo o contraseña incorrectos' });
-      }
-    });
-  });
 
 // Endpoint para obtener todos los usuarios
 app.get('/api/usuarios', (req, res) => {
@@ -314,30 +353,6 @@ app.get('/gestion_usuarios', (req, res) => {
     res.sendFile(path.join(__dirname, 'app', 'gestion_usuarios', 'gestion_usuarios.html'));
 });
 
-// Endpoint para generar el certificado
-app.post('/api/generarCertificado', (req, res) => {
-    const { rut, nombre, domicilio, motivo } = req.body;
-
-    // Crear un nuevo documento PDF
-    const doc = new PDFDocument();
-    
-    // Establecer los headers para descargar el PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=certificado_residencia.pdf');
-
-    // Rellenar el documento con la información del usuario
-    doc.fontSize(12).text(`Certificado de Residencia`, { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(10).text(`Yo, ${nombre}, con RUT ${rut}, declaro que resido en el domicilio ubicado en ${domicilio}.`);
-    doc.moveDown();
-    doc.text(`Motivo de la solicitud: ${motivo}.`);
-    doc.moveDown(2);
-    doc.text(`Emitido el día ${new Date().toLocaleDateString()}.`);
-    
-    // Finaliza el documento y lo envía
-    doc.end();
-    doc.pipe(res); // Enviar el PDF generado como respuesta
-});
 
 
 app.get('/solicitar_certificado', (req, res) => {
@@ -349,3 +364,222 @@ app.get('/solicitar_certificado', (req, res) => {
 app.listen(port, () => {
     console.log(`Servidor escuchando en http://localhost:${port}`);
 });
+
+
+
+const session = require('express-session');
+// Configura el middleware de sesión
+app.use(session({
+    secret: 'tu_clave_secreta', // Cambia esto por una clave secreta fuerte
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: false, httpOnly: false } // Cambia a true si estás usando HTTPS
+}));
+app.use(express.urlencoded({ extended: true })); 
+
+
+// Endpoint para iniciar sesión
+app.post('/login', (req, res) => {
+    const { correo, password } = req.body;
+    const query = 'SELECT * FROM usuario WHERE correo = ?';
+
+    connection.query(query, [correo], (err, results) => {
+        if (err) {
+            console.error('Error al ejecutar la consulta', err);
+            return res.status(500).send('Error del servidor');
+        }
+        
+        if (results.length > 0) {
+            const usuario = results[0];
+
+            // Verificación de contraseña (usa bcrypt en producción)
+            if (usuario.password === password) {
+                // Guarda los datos del usuario en la sesión
+                req.session.user = {
+                    id_usuario: usuario.id_usuario,
+                    primer_nombre: usuario.primer_nombre,
+                    segundo_nombre: usuario.segundo_nombre,
+                    apellido_paterno: usuario.apellido_paterno,
+                    apellido_materno: usuario.apellido_materno,
+                    correo: usuario.correo,
+                    telefono: usuario.telefono,
+                    direccion: usuario.direccion,
+                    rut: usuario.rut,
+                    fecha_nacimiento: usuario.fecha_nacimiento,
+                    role: usuario.id_rol,
+                    visits: (req.session.user?.visits || 0) + 1,
+                    lastLogin: new Date().toISOString()
+                };
+
+                // Redirigir según el id_rol
+                if ([1, 2, 3, 4, 6].includes(usuario.id_rol)) {
+                    return res.status(200).json({ message: 'Inicio de sesión exitoso', redirect: '/index_directiva.html' });
+                } else if (usuario.id_rol === 5) {
+                    return res.status(200).json({ message: 'Inicio de sesión exitoso', redirect: '/index.html' });
+                }
+            } else {
+                return res.status(401).json({ message: 'Correo o contraseña incorrectos' });
+            }
+        } else {
+            return res.status(401).json({ message: 'Correo o contraseña incorrectos' });
+        }
+    });
+});
+
+// Datos de la sesion
+app.get('/api/session', (req, res) => {
+    if (req.session.user) {
+        res.json({
+            id_usuario: req.session.user.id_usuario, // Asegúrate de que este campo está presente en la sesión
+            primer_nombre: req.session.user.primer_nombre,
+            segundo_nombre: req.session.user.segundo_nombre,
+            apellido_paterno: req.session.user.apellido_paterno,
+            apellido_materno: req.session.user.apellido_materno,
+            correo: req.session.user.correo,
+            role: req.session.user.role,
+            direccion: req.session.user.direccion,
+            telefono: req.session.user.telefono,
+            rut: req.session.user.rut,
+            fecha_nacimiento: req.session.user.fecha_nacimiento,
+            visits: req.session.user.visits,
+            lastLogin: req.session.user.lastLogin
+        });
+    } else {
+        res.status(401).json({ message: 'No estás autenticado' });
+    }
+});
+
+
+// Endpoint para cerrar sesión
+app.post('/logout', (req, res) => {
+    // Destruir la sesión
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error al cerrar sesión', err);
+            return res.status(500).json({ message: 'Error al cerrar sesión' });
+        }
+        // Limpiar la cookie de sesión
+        res.clearCookie('connect.sid'); // Asegúrate de que el nombre de la cookie coincide con tu configuración
+        res.status(200).json({ message: 'Sesión cerrada exitosamente' });
+    });
+});
+
+// Middleware para verificar autenticación
+function checkAuth(req, res, next) {
+    if (req.session.user) {
+        next(); // Usuario autenticado, continúa con la siguiente función
+    } else {
+        res.status(401).json({ message: 'No estás autenticado' }); // Usuario no autenticado
+    }
+}
+app.get('/api/check-auth', (req, res) => {
+    if (req.session.user) {
+        res.json({
+            authenticated: true,
+            userId: req.session.user.id_usuario // Devuelve el ID del usuario
+        });
+    } else {
+        res.json({ authenticated: false });
+    }
+});
+
+// check role
+function checkRole(allowedRoles) {
+    return (req, res, next) => {
+        if (req.session.user && allowedRoles.includes(req.session.user.role)) {
+            next(); // El usuario tiene un rol permitido, continúa
+        } else {
+            res.status(403).json({ message: 'Acceso denegado' }); // Acceso denegado
+        }
+    };
+}
+
+// Middleware para verificar el rol del usuario
+function checkRole(allowedRoles) {
+    return (req, res, next) => {
+        if (req.session.user && allowedRoles.includes(req.session.user.role)) {
+            next(); // El usuario tiene un rol permitido, continúa
+        } else {
+            // Si no tiene acceso, destruir la sesión
+            req.session.destroy(err => {
+                if (err) {
+                    console.error('Error al cerrar sesión:', err);
+                    return res.status(500).send('Error del servidor');
+                }
+                res.status(403).json({ message: 'Acceso denegado. Sesión cerrada.' }); // Enviar mensaje de acceso denegado
+            });
+        }
+    };
+}
+
+
+// Endpoint para generar el certificado
+app.post('/api/generarCertificado', (req, res) => {
+    const { rut, nombre, domicilio, motivo } = req.body;
+
+    // Inserta los datos en la base de datos
+    const query = 'INSERT INTO certificados (rut, nombre, domicilio, motivo) VALUES (?, ?, ?, ?)';
+    connection.query(query, [rut, nombre, domicilio, motivo], (err, result) => {
+        if (err) {
+            console.error('Error al insertar en la base de datos:', err);
+            return res.status(500).json({ error: 'Error al generar el certificado' });
+        }
+
+        // Crear un nuevo documento PDF
+        const doc = new PDFDocument();
+
+        // Establecer los headers para descargar el PDF
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=certificado_residencia.pdf');
+
+        // Rellenar el documento con la información del usuario
+        doc.fontSize(12).text(`Certificado de Residencia`, { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(10).text(`Yo, ${nombre}, con RUT ${rut}, declaro que resido en el domicilio ubicado en ${domicilio}.`);
+        doc.moveDown();
+        doc.text(`Motivo de la solicitud: ${motivo}.`);
+        doc.moveDown(2);
+        doc.text(`Emitido el día ${new Date().toLocaleDateString()}.`);
+
+        // Finaliza el documento y lo envía
+        doc.end();
+        doc.pipe(res); // Enviar el PDF generado como respuesta
+    });
+});
+// Endpoint para obtener los certificados
+app.get('/api/obtenerCertificados', (req, res) => {
+    const query = 'SELECT id_certificado, rut, nombre, domicilio, motivo, fecha FROM certificados'; // Asegúrate de que la tabla y los campos existan
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error('Error al obtener los certificados:', err);
+            return res.status(500).json({ error: 'Error al obtener los certificados' });
+        }
+        
+        res.json(results);
+    });
+});
+
+
+
+
+
+// Proteger la pagina segun roles 
+// Gestión usuarios
+app.get('/gestion_usuarios.html', checkRole([1, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'gestion_usuarios/gestion_usuarios.html'));
+});
+// Gestión certificados
+app.get('/gestion_certificados.html', checkRole([1, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'certificado/gestion_certificados.html'));
+});
+// Gestión reservas
+app.get('/gestion_reservas.html', checkRole([1, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'reserva/gestion_reservas.html'));
+});
+// Gestión MIS reservas
+app.get('/mis_reservas.html', checkRole([1, 2, 3, 4, 5, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'profile/mis_reservas.html'));
+});
+
+

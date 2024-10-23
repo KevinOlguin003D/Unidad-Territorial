@@ -1,5 +1,5 @@
 document.getElementById('certificadoForm').addEventListener('submit', function(event) {
-    event.preventDefault(); // Evita el comportamiento por defecto del formulario
+    event.preventDefault(); 
 
     const formData = {
         rut: document.getElementById('rut').value,
@@ -16,7 +16,13 @@ document.getElementById('certificadoForm').addEventListener('submit', function(e
         },
         body: JSON.stringify(formData)
     })
-    .then(response => response.blob())
+    .then(response => {
+        // Verifica si la respuesta es correcta
+        if (!response.ok) {
+            throw new Error('Error al generar el certificado: ' + response.statusText);
+        }
+        return response.blob();
+    })
     .then(blob => {
         // Crear un enlace para descargar el archivo
         const url = window.URL.createObjectURL(blob);
@@ -28,7 +34,7 @@ document.getElementById('certificadoForm').addEventListener('submit', function(e
         a.remove();
     })
     .catch(error => {
-        document.getElementById('mensaje').innerText = 'Error al generar el certificado.';
+        document.getElementById('mensaje').innerText = 'Error al generar el certificado: ' + error.message;
         console.error('Error:', error);
     });
 });

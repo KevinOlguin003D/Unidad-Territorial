@@ -4,21 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitud de Certificado de Residencia</title>
+    <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+        h1 {
+          color: #17f407;
+        }
+        body {
+          font-family: Arial, Helvetica, sans-serif;
+        }
+      </style>
+      <link rel="stylesheet" href="app.component.css">
+      <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&amp;display=swap" rel="stylesheet"/>
+      <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+        body { 
+          background-image: url('../imagenes/image.png');
+          background-repeat: no-repeat;
+          background-size: cover;
+        }
+        h2 {
+            color: #17f407; /* Cambia el color del h2 a verde porque no sirve en el css */  
+            font-size: 40px;
+            text-align: center;
+        }
+      </style>
 </head>
 <body>
     <h2>Solicitud de Certificado de Residencia</h2>
-    
     <form id="certificadoForm">
-        <label for="rut">RUT:</label>
+        <label for="rut" class="label-formulario">RUT:</label>
         <input type="text" id="rut" name="rut" required><br><br>
 
-        <label for="nombre">Nombre Completo:</label>
+        <label for="nombre" class="label-formulario">Nombre Completo:</label>
         <input type="text" id="nombre" name="nombre" required><br><br>
 
-        <label for="domicilio">Domicilio:</label>
+        <label for="domicilio" class="label-formulario">Domicilio:</label>
         <input type="text" id="domicilio" name="domicilio" required><br><br>
 
-        <label for="motivo">Motivo de Solicitud:</label>
+        <label for="motivo" class="label-formulario">Motivo de Solicitud:</label>
         <select id="motivo" name="motivo" required>
             <option value="trabajo">Trabajo</option>
             <option value="estudios">Estudios</option>
@@ -27,9 +49,12 @@
 
         <button type="submit">Generar Certificado</button>
     </form>
-
     <p id="mensaje"></p>
-
+    <!--Bibliotecas-->
     <script src="solicitar_certificado.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css" />
+    <link rel="stylesheet" href="certificados.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+
 </body>
 </html>

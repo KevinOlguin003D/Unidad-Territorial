@@ -3,12 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Usuarios</title>
-   
+    <h1 style="text-align: center;">Directiva Vecinal</h1>
+    <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+        h1 {
+          color: #17f407;
+          font-size: 0px;
+        }
+        h2{
+            color: #17f407;
+            margin-top: 20px;
+            font-size: 30px;
+        }
+        body {
+          font-family: Arial, Helvetica, sans-serif;
+        }
+      </style>
+      <link rel="stylesheet" href="app.component.css">
+      <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&amp;display=swap" rel="stylesheet"/>
+      <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+        body { 
+          background-image: url('../imagenes/image.png');
+          background-repeat: no-repeat;
+          background-size: cover;
+        }
+      </style>
 </head>
 <body>
-    <h1>Gestión de Usuarios</h1>
-    
+    <h2>Gestión de Usuarios</h2>
     <table id="usuariosTable">
         <thead>
             <tr>
@@ -24,6 +46,7 @@
                 <th>Acciones</th>
             </tr>
         </thead>
+
         <tbody>
             <!-- Las filas se llenarán dinámicamente -->
         </tbody>
@@ -31,5 +54,8 @@
     <button id="refreshButton">Refrescar Tabla</button>
     
     <script src="gestion_usuarios.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css" />
+    <link rel="stylesheet" href="gestion_usuarios.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </body>
 </html>

@@ -1,0 +1,30 @@
+.label-formulario {
+    color: #8af736; /* Color verde para el rut */
+    font-weight: bold; /* Negrita */
+    align-items: center;
+    text-align: center;
+    font-size: 23px;
+}
+.h2{
+    color: #8af736;
+    font-size: 40px;
+}
+#certificadoForm{
+    justify-content: center; 
+    align-items: center;
+    text-align: center;
+    margin-top: 100px;
+  }
+#rut{
+    width: 300px;
+    height: 20px;
+    text-align: center;
+}
+#nombre{
+    width: 300px;
+    height: 20px;
+}
+#domicilio{
+    width: 300px;
+    height: 20px;
+}

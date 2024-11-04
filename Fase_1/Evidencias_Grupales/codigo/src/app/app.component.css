@@ -25,12 +25,13 @@
    .text-white {
     color: #ffffff;
    }
-   .text-green-500 {
+   .text-green-500 {  /* Formato del menu */
     color: #17f407;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: bold;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     text-decoration: none;
+
    }
    .px-4 {
     padding-left: 1rem;
@@ -103,5 +104,18 @@
     color: #4a5568;
     font-size: 0.875rem;
   }
+  .navegador-blanco {
+    background-color: #FFFFFF;
+    margin-right: 20px;
+    margin-left: 10px;
+    padding: 1em;
+    text-align: center;
+    width: 100%;
+    z-index: 1000;
+}
+
+.navegador-blanco a:hover {
+    background-color: #4a5568;
+}
   
   

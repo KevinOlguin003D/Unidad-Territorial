@@ -1,0 +1,39 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    margin: 0;
+    padding: 20px;
+}
+#usuariosTable{
+    table {
+        width: 100%;
+        border-collapse: collapse; /* Asegura que los bordes se colapsen */
+        margin-top: 20px;
+    }
+    
+}
+th, td {
+    padding: 12px;
+    text-align: left;
+    border: 1px solid #ddd; /* Agrega borde a las celdas */
+}
+th {
+    background-color: #f2f2f2;
+}
+
+tr{
+    background-color: #f1f1f1; /* Cambia el color de fondo al pasar el mouse */
+}
+
+button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #17f407; /* Color de fondo del botón */
+    color: black; /* Color del texto del botón */
+}
+
+button:hover {
+    background-color: #17f407; /* Color de fondo del botón al pasar el mouse */
+}

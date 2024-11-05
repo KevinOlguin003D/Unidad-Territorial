@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inscripciones</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Si tienes estilos personalizados -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../actividad/gestionar_inscripciones.js" defer></script>
+</head>
+<body>
+    <h1>Gestión de Inscripciones</h1>
+    <table id="inscripcionesTable">
+        <thead>
+            <tr>
+                <th>ID Inscripción</th>
+                <th>ID Usuario</th>
+                <th>ID Actividad</th>
+                <th>Nombre Actividad</th>
+                <th>Descripción</th>
+                <th>Cupo</th>
+                <th>Fecha Actividad</th>
+                <th>Ubicación</th>
+                <th>Fecha Creación</th>
+                <th>ID Estado Inscripción</th>
+                <th>Fecha Inscripción</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Las inscripciones se cargarán aquí -->
+        </tbody>
+    </table>
+
+    <!-- Modal para confirmar cancelación -->
+    <div id="modal" style="display:none;">
+        <h2>Cancelar Inscripción</h2>
+        <p>¿Estás seguro que deseas cancelar esta inscripción?</p>
+        <textarea id="motivoCancelacion" placeholder="Motivo de la cancelación"></textarea>
+        <button id="confirmarCancelacion">Confirmar</button>
+        <button id="cancelar">Cancelar</button>
+    </div>
+    <h2>Historial de Inscripciones</h2>
+<table id="historialInscripcionesTable">
+    <thead>
+        <tr>
+            <th>ID Inscripción</th>
+            <th>ID Usuario</th>
+            <th>ID Actividad</th>
+            <th>Nombre Actividad</th>
+            <th>Fecha Actividad</th>
+            <th>Ubicación</th>
+            <th>Fecha Inscripción</th>
+            <th>ID Estado Inscripción</th>
+            <th>Motivo Cancelación</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!-- El historial de inscripciones se cargará aquí -->
+    </tbody>
+</table>
+
+</body>
+</html>

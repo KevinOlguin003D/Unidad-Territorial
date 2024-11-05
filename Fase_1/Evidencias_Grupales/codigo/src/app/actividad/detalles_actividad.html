@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalles de Actividad</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<style>
+    body { 
+      background-image: url('../imagenes/image.png');
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+</style>
+<body>
+    <div class="actividad-container">
+        <h2 id="nombreActividad">Nombre de la Actividad</h2>
+        <p><strong>Descripción:</strong> <span id="descripcionActividad"></span></p>
+        <p><strong>Cupo:</strong> <span id="cupoActividad"></span></p>
+        <p><strong>Fecha:</strong> <span id="fechaActividad"></span></p>
+        <p><strong>Ubicación:</strong> <span id="ubicacionActividad"></span></p>
+        
+        <button id="inscribirseBtn">Inscribirse</button>
+        <p id="mensaje" class="mensaje"></p>
+    </div>
+
+    <script src="detalles_actividad.js"></script>
+</body>
+</html>

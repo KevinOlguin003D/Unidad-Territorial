@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Actividad</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Crear/Modificar Actividad</h1>
+    <form id="actividadForm">
+        <input type="hidden" id="id_actividad" name="id_actividad">
+
+        <label for="nombre_actividad">Nombre de la actividad:</label>
+        <input type="text" id="nombre_actividad" name="nombre_actividad" maxlength="50" required>
+
+        <label for="descripcion_actividad">Descripción de la actividad:</label>
+        <textarea id="descripcion_actividad" name="descripcion_actividad" maxlength="255"></textarea>
+
+        <label for="cupo">Cupo:</label>
+        <input type="number" id="cupo" name="cupo" required>
+
+        <label for="fecha_actividad">Fecha de la actividad:</label>
+        <input type="datetime-local" id="fecha_actividad" name="fecha_actividad" required>
+
+        <label for="ubicacion">Ubicación:</label>
+        <input type="text" id="ubicacion" name="ubicacion" maxlength="100" required>
+
+        <button type="submit">Guardar</button>
+    </form>
+
+    <div id="responseMessage"></div>
+    <a href="ver_actividades.html">
+        Ver actividades
+    </a>
+    <a href="gestionar_inscripciones.html">
+        Gestionar inscripciones
+    </a>
+    <script src="gestionar_actividad.js"></script>
+</body>
+</html>

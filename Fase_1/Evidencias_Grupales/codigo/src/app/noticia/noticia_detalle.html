@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de Noticia</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .detalle-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            font-size: 24px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="detalle-container">
+        <h1 id="titulo"></h1>
+        <img id="imagen" alt="Imagen de la noticia">
+        <p id="contenido"></p>
+        <p id="editor"></p>
+        <p id="fecha"></p>
+        <button id="volver">Volver a Noticias</button>
+    </div>
+
+    <script src="noticia_detalle.js"></script>
+</body>
+</html>

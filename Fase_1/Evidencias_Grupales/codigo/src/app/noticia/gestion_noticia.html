@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Noticias</title>
+</head>
+<body>
+    <h1>Crear Noticia</h1>
+    
+    <form id="form-noticia" enctype="multipart/form-data">
+        <div>
+            <label for="titulo">Título:</label>
+            <input type="text" id="titulo" name="titulo" required>
+        </div>
+        <div>
+            <label for="descripcion">Descripción:</label>
+            <textarea id="descripcion" name="descripcion" required></textarea>
+        </div>
+        <div>
+            <label for="imagen">Portada (Imagen):</label>
+            <input type="file" id="imagen" name="imagen" accept="image/*" required>
+        </div>
+        <button type="submit">Publicar Noticia</button>
+    </form>
+
+    <h1>Historial de Noticias</h1>
+    <table id="tabla-noticias">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Contenido</th>
+                <th>Fecha de Publicación</th>
+                <th>Editor</th>
+                <th>Imagen</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Las noticias se cargarán aquí dinámicamente -->
+        </tbody>
+    </table>
+
+    <script src="gestion_noticia.js"></script> <!-- Enlace a tu archivo JavaScript -->
+</body>
+</html>

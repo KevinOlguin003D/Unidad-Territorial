@@ -6,14 +6,16 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const nodemailer = require('nodemailer');
+require('dotenv').config();
+
 // Configuración de correo
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com', // Host de Gmail
     port: 587, // Puerto para conexiones TLS
     secure: false, // true para puerto 465, false para otros puertos
     auth: {
-        user: 'sistemaunidadterritorial@gmail.com',
-        pass: 'fgvz kzrj kdap wylt',
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
     },
 });
 // Función para formatear la fecha para los correos

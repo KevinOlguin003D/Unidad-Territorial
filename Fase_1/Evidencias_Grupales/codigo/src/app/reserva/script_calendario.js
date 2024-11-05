@@ -2,7 +2,7 @@ $(document).ready(function() {
     // Inicializa el calendario
     $('#calendar').fullCalendar({
         header: {
-            left: 'prev,next today',
+            left: 'prev today next',
             center: 'title',
             right: ''
         },
@@ -98,7 +98,10 @@ $(document).ready(function() {
                 }
     
                 const fechaReserva = moment(selectedDate).format('YYYY-MM-DD');
-    
+                const confirmation = confirm(`¿Estás seguro que deseas reservar el recurso para el ${fechaReserva} de ${horaInicio} a ${horaFin}?`);
+                if (!confirmation) {
+                return;
+                }
                 $.ajax({
                     url: '/api/reservar',
                     method: 'POST',
@@ -130,7 +133,7 @@ $(document).ready(function() {
                 });
             } else {
                 // Si el usuario no está autenticado, redirige a la página de inicio de sesión
-                window.location.href = '/login/login_component.html'; // Cambia esta ruta según tu aplicación
+                window.location.href = '/login/login_component.html';
             }
         }).fail(function() {
             // Manejo de error si la verificación de autenticación falla

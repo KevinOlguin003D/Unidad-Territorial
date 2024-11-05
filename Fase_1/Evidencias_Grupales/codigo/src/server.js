@@ -2,6 +2,38 @@ const express = require('express');
 const connection = require('./db_connection');
 const path = require('path');
 const app = express();
+const cors = require('cors');
+const multer = require('multer');
+const fs = require('fs');
+const nodemailer = require('nodemailer');
+// Configuración de correo
+const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com', // Host de Gmail
+    port: 587, // Puerto para conexiones TLS
+    secure: false, // true para puerto 465, false para otros puertos
+    auth: {
+        user: 'sistemaunidadterritorial@gmail.com',
+        pass: 'fgvz kzrj kdap wylt',
+    },
+});
+// Función para formatear la fecha para los correos
+function formatDate(dateString) {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    
+    // ajustar a UTC-3 (Chile)
+    const date = new Date(dateString + 'T00:00:00');
+    const offset = -3 * 60;
+    const localDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60 * 1000) + (offset * 60 * 1000));
+    
+    return localDate.toLocaleDateString('es-ES', options);
+}
+
+const corsOptions = {
+    credentials: true, // Permite el intercambio de cookies y credenciales
+    optionsSuccessStatus: 200 // Soluciona problemas con navegadores antiguos que devuelven 204
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 const port = 3000;
 const PDFDocument = require('pdfkit');
 
@@ -54,9 +86,10 @@ app.post('/api/actualizar-disponibilidad', (req, res) => {
     });
 });
 
+
 // Endpoint para realizar una reserva 
 app.post('/api/reservar', (req, res) => {
-    const { fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, id_estado_reserva} = req.body;
+    const { fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, id_estado_reserva } = req.body;
     console.log('Datos recibidos para la reserva:', req.body);
 
     const query = `
@@ -69,9 +102,74 @@ app.post('/api/reservar', (req, res) => {
             console.error('Error al realizar la reserva:', error);
             return res.status(500).json({ error: 'Error al realizar la reserva: ' + error.message });
         }
-        res.json({ message: 'Reserva realizada correctamente', id_reserva: results.insertId });
+
+        // Obtener la fecha de creación de la reserva
+        const fecha_creacion = new Date(); 
+
+        // Obtener el correo del usuario y la descripción del recurso
+        const sqlGetUserAndResource = `
+            SELECT usuario.correo, recurso.descripcion_recurso 
+            FROM usuario 
+            JOIN recurso ON recurso.id_recurso = ? 
+            WHERE usuario.id_usuario = ?;
+        `;
+
+        connection.query(sqlGetUserAndResource, [id_recurso, id_usuario], (err, userResult) => {
+            if (err || userResult.length === 0) {
+                console.error('Error al obtener los detalles del usuario o recurso:', err);
+                return res.status(500).json({ message: 'Reserva realizada, pero hubo un problema enviando el correo de confirmación.' });
+            }
+
+            const usuarioCorreo = userResult[0].correo;
+            const descripcionRecurso = userResult[0].descripcion_recurso;
+
+            // Obtener la descripción del motivo
+            const sqlGetMotivo = `SELECT desc_motivo FROM motivo WHERE id_motivo = ?`;
+            connection.query(sqlGetMotivo, [id_motivo], (err, motivoResult) => {
+                if (err || motivoResult.length === 0) {
+                    console.error('Error al obtener la descripción del motivo:', err);
+                    return res.status(500).json({ message: 'Reserva realizada, pero hubo un problema enviando el correo de confirmación.' });
+                }
+
+                const descripcion_motivo = motivoResult[0].desc_motivo;
+                // Formatear la fecha para el correo
+                const fechaFormateada = formatDate(fecha_reserva);
+                // Configuración del contenido del correo
+                const mailOptions = {
+                    from: 'sistemaunidadterritorial@gmail.com',
+                    to: usuarioCorreo,
+                    subject: 'Registro de reserva con éxito',
+                    html: `
+                        <h1>Registro de reserva con éxito</h1>
+                        <p>Estimado usuario,</p>
+                        <p>Su reserva ha sido registrada con éxito. A continuación, los detalles:</p>
+                        <ul>
+                            <li><strong>Recurso reservado:</strong> ${descripcionRecurso}</li>
+                            <li><strong>Fecha de la reserva:</strong> ${fechaFormateada}</li>
+                            <li><strong>Motivo:</strong> ${descripcion_motivo}</li>
+                            <li><strong>Hora de inicio:</strong> ${hora_inicio}</li>
+                            <li><strong>Hora de fin:</strong> ${hora_fin}</li>
+                            <li><strong>Fecha de creación:</strong> ${fecha_creacion.toLocaleString('es-ES')}</li> <!-- Fecha de creación -->
+                        </ul>
+                        <p>Gracias por utilizar nuestro sistema.</p>
+                    `,
+                };
+
+                // Enviar el correo
+                transporter.sendMail(mailOptions, (err, info) => {
+                    if (err) {
+                        console.error('Error al enviar correo:', err);
+                        return res.status(500).json({ message: 'Reserva realizada, pero hubo un problema enviando el correo de confirmación.' });
+                    } else {
+                        console.log('Correo enviado: ' + info.response);
+                        res.json({ message: 'Reserva realizada correctamente y correo enviado.', id_reserva: results.insertId });
+                    }
+                });
+            });
+        });
     });
 });
+
 
 
 // Endpoint para obtener horarios reservados
@@ -138,31 +236,88 @@ app.get('/api/obtenerReservasUsuario/:idUsuario', (req, res) => {
     });
 });
 
-// Endpoint para cancelar una reserva
 app.put('/api/cancelarReserva/:idReserva', (req, res) => {
     const { idReserva } = req.params;
-
-    const query = `
+    const { motivoCancelacion } = req.body;
+    // Actualizar la reserva y registrar la fecha de cancelación
+    const queryCancel = `
         UPDATE reserva
-        SET id_estado_reserva = 2 
+        SET id_estado_reserva = 2, fecha_cancelacion = NOW() 
         WHERE id_reserva = ? AND id_estado_reserva = 1
     `;
 
-    connection.query(query, [idReserva], (error, results) => {
-        if (error) {
-            console.error('Error al cancelar la reserva:', error);
-            return res.status(500).json({ error: 'Error al cancelar la reserva' });
+    // Consultar la información de la reserva, el recurso y el motivo antes de la cancelación
+    const queryInfo = `
+        SELECT r.fecha_reserva, r.hora_inicio, r.hora_fin, recurso.descripcion_recurso, usuario.correo, r.id_motivo 
+        FROM reserva r
+        JOIN recurso ON r.id_recurso = recurso.id_recurso
+        JOIN usuario ON r.id_usuario = usuario.id_usuario
+        WHERE r.id_reserva = ?
+    `;
+
+    connection.query(queryInfo, [idReserva], (error, results) => {
+        if (error || results.length === 0) {
+            console.error('Error al obtener información de la reserva:', error);
+            return res.status(500).json({ error: 'Error al obtener información de la reserva' });
         }
 
-        if (results.affectedRows === 0) {
-            return res.status(404).json({ message: 'Reserva no encontrada o ya cancelada' });
-        }
+        const { fecha_reserva, hora_inicio, hora_fin, descripcion_recurso, correo, id_motivo } = results[0];
 
-        res.json({ message: 'Reserva cancelada con éxito' });
+        // Obtener la descripción del motivo
+        const sqlGetMotivo = `SELECT desc_motivo FROM motivo WHERE id_motivo = ?`;
+        connection.query(sqlGetMotivo, [id_motivo], (err, motivoResult) => {
+            if (err || motivoResult.length === 0) {
+                console.error('Error al obtener la descripción del motivo:', err);
+                return res.status(500).json({ message: 'Reserva cancelada, pero hubo un problema enviando el correo de confirmación.' });
+            }
+
+            const descripcion_motivo = motivoResult[0].desc_motivo;
+            const formattedFechaReserva = new Date(fecha_reserva).toISOString().split('T')[0];
+            const fechaFormateada = formatDate(formattedFechaReserva);
+
+            connection.query(queryCancel, [idReserva], (error, results) => {
+                if (error) {
+                    console.error('Error al cancelar la reserva:', error);
+                    return res.status(500).json({ error: 'Error al cancelar la reserva' });
+                }
+
+                if (results.affectedRows === 0) {
+                    return res.status(404).json({ message: 'Reserva no encontrada o ya cancelada' });
+                }
+
+                // Configurar y enviar el correo de confirmación de cancelación
+                const mailOptions = {
+                    from: 'sistemaunidadterritorial@gmail.com',
+                    to: correo,
+                    subject: 'Reserva cancelada',
+                    html: `
+                        <h1>Reserva cancelada</h1>
+                        <p>Su reserva ha sido cancelada con éxito. Aquí están los detalles:</p>
+                        <ul>
+                            <li><strong>Recurso:</strong> ${descripcion_recurso}</li>
+                            <li><strong>Fecha de la reserva:</strong> ${fechaFormateada}</li>
+                            <li><strong>Motivo:</strong> ${descripcion_motivo}</li>
+                            <li><strong>Motivo de cancelación:</strong> ${motivoCancelacion}</li> <!-- Motivo de cancelación adicional -->
+                            <li><strong>Hora de inicio:</strong> ${hora_inicio}</li>
+                            <li><strong>Hora de fin:</strong> ${hora_fin}</li>
+                            <li><strong>Fecha de cancelación:</strong> ${new Date().toLocaleString('es-ES')}</li> <!-- Fecha de cancelación -->
+                        </ul>
+                        <p>Gracias por utilizar nuestro sistema.</p>
+                    `,
+                };
+
+                transporter.sendMail(mailOptions, (err, info) => {
+                    if (err) {
+                        console.error('Error al enviar correo de cancelación:', err);
+                        return res.status(500).json({ message: 'Reserva cancelada, pero hubo un problema al enviar el correo.' });
+                    }
+
+                    res.json({ message: 'Reserva cancelada con éxito y correo de confirmación enviado.' });
+                });
+            });
+        });
     });
 });
-
-
 
 
 
@@ -222,11 +377,17 @@ app.get('/api/obtenerReservas', (req, res) => {
 
 // Endpoint de registro
 app.post('/register', (req, res) => {
-    const { rut, primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento } = req.body;
+    const { rut, primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento, recibirNotificaciones } = req.body;
 
     // Validar los campos requeridos
     if (!rut || !primerNombre || !apellidoPaterno || !apellidoMaterno || !correo || !telefono || !direccion || !password || !fechaNacimiento) {
         return res.status(400).json({ message: 'Todos los campos son requeridos, excepto el segundo nombre.' });
+    }
+
+    // Formatear el RUT
+    const rutFormateado = formatearRUT(rut);
+    if (!rutFormateado) {
+        return res.status(400).json({ error: 'RUT no válido' });
     }
 
     // Verificar si ya existe un usuario con el mismo rut, correo o telefono
@@ -235,7 +396,7 @@ app.post('/register', (req, res) => {
         WHERE rut = ? OR correo = ? OR telefono = ?
     `;
 
-    const values = [rut, correo, telefono];
+    const values = [rutFormateado, correo, telefono];
 
     connection.query(query, values, (error, results) => {
         if (error) {
@@ -245,7 +406,7 @@ app.post('/register', (req, res) => {
 
         if (results.length > 0) {
             const existingAttributes = [];
-            if (results.some(user => user.rut === rut)) existingAttributes.push("RUT");
+            if (results.some(user => user.rut === rutFormateado)) existingAttributes.push("RUT");
             if (results.some(user => user.correo === correo)) existingAttributes.push("correo");
             if (results.some(user => user.telefono === telefono)) existingAttributes.push("teléfono");
 
@@ -256,10 +417,10 @@ app.post('/register', (req, res) => {
 
         const id_estadousuario = 1;
         const id_rol = 5; // rol por defecto
-        const insertQuery = `INSERT INTO usuario (rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, password, fecha_nacimiento, id_rol, id_estadousuario) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const insertQuery = `INSERT INTO usuario (rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, password, fecha_nacimiento, id_rol, id_estadousuario, recibe_notificacion) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        connection.query(insertQuery, [rut, primerNombre, segundoNombre || '', apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento, id_rol, id_estadousuario], (err, result) => {
+        connection.query(insertQuery, [rutFormateado, primerNombre, segundoNombre || '', apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento, id_rol, id_estadousuario, recibirNotificaciones], (err, result) => {
             if (err) {
                 console.error('Error ejecutando la consulta SQL:', err);
                 return res.status(500).json({ message: 'Error al registrar el usuario' });
@@ -348,6 +509,38 @@ app.put('/api/usuarios/:rut/rol', (req, res) => {
         res.status(200).json({ message: 'Rol actualizado correctamente' });
     });
 });
+// Endpoint para actualizar el recibir notificaciones
+app.post('/api/actualizarNotificaciones', (req, res) => {
+    const { rut, recibe_notificacion } = req.body;
+
+    // Validar que se haya proporcionado el rut y el estado
+    if (!rut || typeof recibe_notificacion === 'undefined') {
+        return res.status(400).json({ message: 'El RUT y el estado de notificación son requeridos.' });
+    }
+
+    // Consulta para actualizar el estado de recibir notificaciones
+    const updateQuery = `
+        UPDATE usuario 
+        SET recibe_notificacion = ? 
+        WHERE rut = ?
+    `;
+
+    const values = [recibe_notificacion, rut];
+
+    connection.query(updateQuery, values, (error, results) => {
+        if (error) {
+            console.error('Error ejecutando la consulta SQL:', error);
+            return res.status(500).json({ message: 'Error al actualizar el estado de notificaciones.' });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+
+        res.status(200).json({ message: 'Estado de notificaciones actualizado exitosamente.' });
+    });
+});
+
 
 app.get('/gestion_usuarios', (req, res) => {
     res.sendFile(path.join(__dirname, 'app', 'gestion_usuarios', 'gestion_usuarios.html'));
@@ -366,19 +559,24 @@ app.listen(port, () => {
 });
 
 
-
+const sessionDuration = 30 * 60 * 1000;
 const session = require('express-session');
 // Configura el middleware de sesión
 app.use(session({
-    secret: 'tu_clave_secreta', // Cambia esto por una clave secreta fuerte
+    secret: 'tu_clave_secreta',
     resave: false,
-    saveUninitialized: true,
-    cookie: { secure: false, httpOnly: false } // Cambia a true si estás usando HTTPS
+    saveUninitialized: false,
+    cookie: {
+        secure: false,
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: sessionDuration
+    }
 }));
+
 app.use(express.urlencoded({ extended: true })); 
 
 
-// Endpoint para iniciar sesión
 app.post('/login', (req, res) => {
     const { correo, password } = req.body;
     const query = 'SELECT * FROM usuario WHERE correo = ?';
@@ -392,9 +590,7 @@ app.post('/login', (req, res) => {
         if (results.length > 0) {
             const usuario = results[0];
 
-            // Verificación de contraseña (usa bcrypt en producción)
             if (usuario.password === password) {
-                // Guarda los datos del usuario en la sesión
                 req.session.user = {
                     id_usuario: usuario.id_usuario,
                     primer_nombre: usuario.primer_nombre,
@@ -407,9 +603,12 @@ app.post('/login', (req, res) => {
                     rut: usuario.rut,
                     fecha_nacimiento: usuario.fecha_nacimiento,
                     role: usuario.id_rol,
+                    recibirNotificaciones: usuario.recibe_notificacion,
                     visits: (req.session.user?.visits || 0) + 1,
                     lastLogin: new Date().toISOString()
                 };
+
+                console.log('Usuario guardado en la sesión:', req.session.user);
 
                 // Redirigir según el id_rol
                 if ([1, 2, 3, 4, 6].includes(usuario.id_rol)) {
@@ -430,7 +629,7 @@ app.post('/login', (req, res) => {
 app.get('/api/session', (req, res) => {
     if (req.session.user) {
         res.json({
-            id_usuario: req.session.user.id_usuario, // Asegúrate de que este campo está presente en la sesión
+            id_usuario: req.session.user.id_usuario,
             primer_nombre: req.session.user.primer_nombre,
             segundo_nombre: req.session.user.segundo_nombre,
             apellido_paterno: req.session.user.apellido_paterno,
@@ -441,6 +640,7 @@ app.get('/api/session', (req, res) => {
             telefono: req.session.user.telefono,
             rut: req.session.user.rut,
             fecha_nacimiento: req.session.user.fecha_nacimiento,
+            recibirNotificaciones: req.session.user.recibirNotificaciones,
             visits: req.session.user.visits,
             lastLogin: req.session.user.lastLogin
         });
@@ -449,6 +649,26 @@ app.get('/api/session', (req, res) => {
     }
 });
 
+
+app.use((req, res, next) => {
+    if (req.session.user) {
+        const now = Date.now();
+        const lastActivity = req.session.lastActivity || now;
+        
+        // Verificar si ha pasado el tiempo de sesión
+        if (now - lastActivity > sessionDuration) {
+            req.session.destroy(err => {
+                if (err) {
+                    return next(err);
+                }
+                return res.status(401).json({ message: 'Sesión expirada. Por favor, inicia sesión de nuevo.' });
+            });
+        } else {
+            req.session.lastActivity = now;
+        }
+    }
+    next();
+});
 
 // Endpoint para cerrar sesión
 app.post('/logout', (req, res) => {
@@ -459,7 +679,7 @@ app.post('/logout', (req, res) => {
             return res.status(500).json({ message: 'Error al cerrar sesión' });
         }
         // Limpiar la cookie de sesión
-        res.clearCookie('connect.sid'); // Asegúrate de que el nombre de la cookie coincide con tu configuración
+        res.clearCookie('connect.sid');
         res.status(200).json({ message: 'Sesión cerrada exitosamente' });
     });
 });
@@ -467,16 +687,18 @@ app.post('/logout', (req, res) => {
 // Middleware para verificar autenticación
 function checkAuth(req, res, next) {
     if (req.session.user) {
-        next(); // Usuario autenticado, continúa con la siguiente función
+        next();
     } else {
-        res.status(401).json({ message: 'No estás autenticado' }); // Usuario no autenticado
+        res.status(401).json({ message: 'No estás autenticado' });
     }
 }
 app.get('/api/check-auth', (req, res) => {
     if (req.session.user) {
         res.json({
             authenticated: true,
-            userId: req.session.user.id_usuario // Devuelve el ID del usuario
+            userId: req.session.user.id_usuario,
+            userRole: req.session.user.role,
+            userCorreo: req.session.user.correo
         });
     } else {
         res.json({ authenticated: false });
@@ -487,9 +709,9 @@ app.get('/api/check-auth', (req, res) => {
 function checkRole(allowedRoles) {
     return (req, res, next) => {
         if (req.session.user && allowedRoles.includes(req.session.user.role)) {
-            next(); // El usuario tiene un rol permitido, continúa
+            next();
         } else {
-            res.status(403).json({ message: 'Acceso denegado' }); // Acceso denegado
+            res.status(403).json({ message: 'Acceso denegado' });
         }
     };
 }
@@ -498,7 +720,7 @@ function checkRole(allowedRoles) {
 function checkRole(allowedRoles) {
     return (req, res, next) => {
         if (req.session.user && allowedRoles.includes(req.session.user.role)) {
-            next(); // El usuario tiene un rol permitido, continúa
+            next();
         } else {
             // Si no tiene acceso, destruir la sesión
             req.session.destroy(err => {
@@ -506,49 +728,225 @@ function checkRole(allowedRoles) {
                     console.error('Error al cerrar sesión:', err);
                     return res.status(500).send('Error del servidor');
                 }
-                res.status(403).json({ message: 'Acceso denegado. Sesión cerrada.' }); // Enviar mensaje de acceso denegado
+                res.status(403).json({ message: 'Acceso denegado. Sesión cerrada.' });
             });
         }
     };
 }
 
+// Función para formatear el RUT 
+function formatearRUT(rut) {
+    const soloNumerosYK = rut.replace(/[^0-9Kk]/g, '');
+    const largo = soloNumerosYK.length;
+    if (largo < 2) return null;
+    const cuerpo = soloNumerosYK.slice(0, largo - 1);
+    const dv = soloNumerosYK.charAt(largo - 1).toUpperCase();
 
-// Endpoint para generar el certificado
-app.post('/api/generarCertificado', (req, res) => {
-    const { rut, nombre, domicilio, motivo } = req.body;
+    // Formatear RUT
+    const rutFormateado = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
+    return rutFormateado;
+}
 
-    // Inserta los datos en la base de datos
-    const query = 'INSERT INTO certificados (rut, nombre, domicilio, motivo) VALUES (?, ?, ?, ?)';
-    connection.query(query, [rut, nombre, domicilio, motivo], (err, result) => {
+
+
+
+// Función para obtener la fecha y hora en Chile
+const getChileDateTime = () => {
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
+};
+
+app.post("/api/generarCertificado", (req, res) => {
+    const { rut, nombre, domicilio, motivo, correo } = req.body;
+    const rutFormateado = formatearRUT(rut);
+    // Validación de los campos
+    if (!rutFormateado || !nombre || !domicilio || !motivo) {
+        return res.status(400).json({ error: "Por favor, completa todos los campos." });
+    }
+
+    // Obtener la fecha y hora actual de Chile
+    const fechaCreacion = getChileDateTime();
+    const dd = String(fechaCreacion.getDate()).padStart(2, '0');
+    const mm = String(fechaCreacion.getMonth() + 1).padStart(2, '0');
+    const yyyy = fechaCreacion.getFullYear();
+    const fechaString = `${yyyy}-${mm}-${dd}`;
+
+    // Verificar si ya existe un documento con el mismo RUT, fecha y motivo
+    const queryExistencia = "SELECT documento FROM certificados WHERE rut = ? AND DATE(fecha) = ? AND motivo = ?";
+    connection.query(queryExistencia, [rutFormateado, fechaString, motivo], (err, results) => {
         if (err) {
-            console.error('Error al insertar en la base de datos:', err);
-            return res.status(500).json({ error: 'Error al generar el certificado' });
+            console.error("Error al verificar la existencia del documento:", err);
+            return res.status(500).json({ error: "Error al verificar el documento." });
         }
 
-        // Crear un nuevo documento PDF
-        const doc = new PDFDocument();
+        if (results.length > 0) {
+            // Si el documento ya existe, se envía o se descarga
+            const existingDocument = results[0].documento;
+            const pdfName = `certificado_residencia_${rut.replace(/[.-]/g, '')}${dd}${mm}${yyyy}.pdf`;
 
-        // Establecer los headers para descargar el PDF
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', 'attachment; filename=certificado_residencia.pdf');
+            // Enviar por correo si se proporciona, de lo contrario lo descarga
+            if (correo) {
+                // Enviar el archivo PDF por correo
+                const mailOptions = {
+                    from: "sistemaunidadterritorial@gmail.com",
+                    to: correo,
+                    subject: "Certificado de Residencia Generado",
+                    text: `Estimado(a) ${nombre}, se adjunta su certificado de residencia.`,
+                    attachments: [
+                        {
+                            filename: pdfName,
+                            content: existingDocument,
+                        },
+                    ],
+                };
 
-        // Rellenar el documento con la información del usuario
-        doc.fontSize(12).text(`Certificado de Residencia`, { align: 'center' });
-        doc.moveDown();
-        doc.fontSize(10).text(`Yo, ${nombre}, con RUT ${rut}, declaro que resido en el domicilio ubicado en ${domicilio}.`);
-        doc.moveDown();
-        doc.text(`Motivo de la solicitud: ${motivo}.`);
-        doc.moveDown(2);
-        doc.text(`Emitido el día ${new Date().toLocaleDateString()}.`);
+                transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.error("Error al enviar el correo:", error);
+                        return res.status(500).json({ message: "Error al enviar el correo con el certificado." });
+                    }
 
-        // Finaliza el documento y lo envía
-        doc.end();
-        doc.pipe(res); // Enviar el PDF generado como respuesta
+                    console.log("Correo enviado correctamente.");
+                    console.log('Correo enviado: ' + info.response);
+                    return res.json({ message: "Certificado existente enviado por correo exitosamente." });
+                });
+            } else {
+                // Descargar el documento existente
+                const buffer = Buffer.from(existingDocument);
+                const tempPath = path.join(__dirname, pdfName);
+                fs.writeFile(tempPath, buffer, (err) => {
+                    if (err) {
+                        console.error("Error al escribir el archivo temporal:", err);
+                        return res.status(500).json({ error: "Error al descargar el archivo." });
+                    }
+
+                    // Iniciar la descarga del documento existente
+                    res.download(tempPath, pdfName, (err) => {
+                        if (err) {
+                            console.error("Error al enviar el archivo:", err);
+                            return res.status(500).send("Error al descargar el archivo.");
+                        }
+
+                        // Eliminar el archivo temporal
+                        fs.unlink(tempPath, (unlinkErr) => {
+                            if (unlinkErr) {
+                                console.error("Error al eliminar el archivo temporal:", unlinkErr);
+                            } else {
+                                console.log("Archivo PDF temporal eliminado.");
+                            }
+                        });
+                    });
+                });
+            }
+        } else {
+            // Documento no existe, se procede a generarlo
+            const doc = new PDFDocument();
+            const pdfName = `certificado_residencia_${rut.replace(/[.-]/g, '')}${dd}${mm}${yyyy}.pdf`;
+            const pdfPath = path.join(__dirname, pdfName);
+
+            // Escribir el PDF en un archivo
+            const writeStream = fs.createWriteStream(pdfPath);
+            doc.pipe(writeStream);
+
+            doc.fontSize(12).text("Certificado de Residencia", { align: "center" });
+            doc.moveDown();
+            doc.fontSize(10).text(`Yo, ${nombre}, con RUT ${rutFormateado}, declaro que resido en el domicilio ubicado en ${domicilio}.`);
+            doc.moveDown();
+            doc.text(`Motivo de la solicitud: ${motivo}.`);
+            doc.moveDown(2);
+            doc.text(`Fecha de emisión del documento: ${fechaCreacion.toLocaleDateString("es-ES")}.`);
+
+            doc.end();
+
+            writeStream.on("finish", () => {
+                // Leer el archivo PDF como un Buffer
+                fs.readFile(pdfPath, (err, pdfData) => {
+                    if (err) {
+                        console.error("Error al leer el archivo PDF:", err);
+                        return res.status(500).json({ error: "Error al generar el certificado PDF." });
+                    }
+
+                    // Insertar datos en la base de datos
+                    const query = "INSERT INTO certificados (rut, nombre, domicilio, motivo, documento, fecha) VALUES (?, ?, ?, ?, ?, ?)";
+                    connection.query(query, [rutFormateado, nombre, domicilio, motivo, pdfData, fechaCreacion], (err) => {
+                        if (err) {
+                            console.error("Error al insertar en la base de datos:", err);
+                            fs.unlink(pdfPath, () => {});
+                            return res.status(500).json({ error: "Error al generar el certificado." });
+                        }
+
+                        // Validar correo
+                        const emailRegex = /^[a-zA-Z0-9._%+-]+@(gmail\.com)$/;
+                        if (correo && emailRegex.test(correo)) {
+                            // Enviar el archivo PDF por correo
+                            const mailOptions = {
+                                from: "sistemaunidadterritorial@gmail.com",
+                                to: correo,
+                                subject: "Certificado de Residencia Generado",
+                                text: `Estimado(a) ${nombre}, se adjunta su certificado de residencia.`,
+                                attachments: [
+                                    {
+                                        filename: pdfName,
+                                        content: pdfData,
+                                    },
+                                ],
+                            };
+
+                            transporter.sendMail(mailOptions, (error, info) => {
+                                if (error) {
+                                    console.error("Error al enviar el correo:", error);
+                                    fs.unlink(pdfPath, () => {});
+                                    return res.status(500).json({ message: "Error al enviar el correo con el certificado." });
+                                }
+
+                                console.log("Correo enviado correctamente.");
+                                console.log('Correo enviado: ' + info.response);
+
+                                // Eliminar el archivo PDF temporal después de enviarlo
+                                fs.unlink(pdfPath, (unlinkErr) => {
+                                    if (unlinkErr) {
+                                        console.error("Error al eliminar el archivo temporal:", unlinkErr);
+                                    } else {
+                                        console.log("Archivo PDF temporal eliminado.");
+                                    }
+                                });
+
+                                // Confirmar el envío del certificado
+                                res.json({ message: "Certificado generado y enviado por correo exitosamente." });
+                            });
+                        } else {
+                            // Si el correo está vacío o no es válido, iniciar la descarga del documento
+                            res.download(pdfPath, pdfName, (err) => {
+                                if (err) {
+                                    console.error("Error al enviar el archivo:", err);
+                                    return res.status(500).send("Error al descargar el archivo.");
+                                }
+                                console.log("Certificado enviado para descarga.");
+
+                                // Después de enviar el archivo, eliminar el archivo PDF temporal
+                                fs.unlink(pdfPath, (unlinkErr) => {
+                                    if (unlinkErr) {
+                                        console.error("Error al eliminar el archivo temporal:", unlinkErr);
+                                    } else {
+                                        console.log("Archivo PDF temporal eliminado.");
+                                    }
+                                });
+                            });
+                        }
+                    });
+                });
+            });
+
+            writeStream.on("error", (error) => {
+                console.error("Error al escribir el PDF:", error);
+                return res.status(500).json({ message: "Error al generar el certificado PDF." });
+            });
+        }
     });
 });
+
 // Endpoint para obtener los certificados
 app.get('/api/obtenerCertificados', (req, res) => {
-    const query = 'SELECT id_certificado, rut, nombre, domicilio, motivo, fecha FROM certificados'; // Asegúrate de que la tabla y los campos existan
+    const query = 'SELECT id_certificado, rut, nombre, domicilio, motivo, fecha, documento FROM certificados';
 
     connection.query(query, (err, results) => {
         if (err) {
@@ -559,12 +957,968 @@ app.get('/api/obtenerCertificados', (req, res) => {
         res.json(results);
     });
 });
+// Endpoint para obtener un certificado por ID
+app.get('/api/obtenerCertificado/:id', (req, res) => {
+    const id = req.params.id;
+    const query = 'SELECT documento FROM certificados WHERE id_certificado = ?';
+
+    connection.query(query, [id], (err, results) => {
+        if (err) {
+            console.error('Error al obtener el certificado:', err);
+            return res.status(500).json({ error: 'Error al obtener el certificado' });
+        }
+
+        if (results.length > 0) {
+            const documento = results[0].documento;
+            res.contentType('application/pdf');
+            res.send(documento);
+        } else {
+            res.status(404).json({ error: 'Certificado no encontrado' });
+        }
+    });
+});
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 
+// Endpoint para subir la noticia con la imagen como BLOB
+app.post('/api/noticias/subir', upload.single('imagen'), (req, res) => {
+    const { titulo, contenido } = req.body; 
+    const id_usuario = req.session && req.session.user ? req.session.user.id_usuario : null;
+
+    // Verificar que se ha subido una imagen
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'Es obligatorio subir una imagen para la noticia' });
+    }
+
+    // Convertir la imagen a formato BLOB (buffer)
+    const imagen = req.file.buffer; 
+
+    // Insertar la imagen en la tabla `imagen`
+    const sqlInsertImagen = `INSERT INTO imagen (imagen) VALUES (?)`;
+    connection.query(sqlInsertImagen, [imagen], (err, result) => {
+        if (err) {
+            console.error('Error al insertar la imagen:', err);
+            return res.status(500).json({ success: false, message: 'Error al insertar la imagen' });
+        }
+
+        const id_imagen = result.insertId; 
+        const fecha_publicacion = new Date();
+        const sqlInsertNoticia = `INSERT INTO noticia (titulo, contenido, fecha_publicacion, id_usuario, id_imagen)
+                                  VALUES (?, ?, ?, ?, ?)`;
+
+        connection.query(sqlInsertNoticia, [titulo, contenido, fecha_publicacion, id_usuario, id_imagen], (err, result) => {
+            if (err) {
+                console.error('Error al insertar la noticia:', err);
+                return res.status(500).json({ success: false, message: 'Error al insertar la noticia' });
+            }
+
+            // Enviar correo a los usuarios que reciben notificaciones
+            const sqlSelectUsuarios = `SELECT correo FROM usuario WHERE recibe_notificacion = 1`;
+            connection.query(sqlSelectUsuarios, (err, usuarios) => {
+                if (err) {
+                    console.error('Error al obtener los usuarios:', err);
+                    return res.status(500).json({ success: false, message: 'Error al obtener los usuarios' });
+                }
+
+                // Crear un array de promesas para enviar correos
+                const emailPromises = usuarios.map(usuario => {
+                    const mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: usuario.correo,
+                        subject: titulo,
+                        html: `
+                            <h1>${titulo}</h1>
+                            <p>${contenido}</p>
+                            <p><img src="cid:uniqueImageID" alt="Imagen de la noticia"></p>
+                        `,
+                        attachments: [
+                            {
+                                filename: req.file.originalname,
+                                content: req.file.buffer,
+                                cid: 'uniqueImageID'
+                            }
+                        ],
+                    };
+                    return transporter.sendMail(mailOptions);
+                });
+
+                Promise.all(emailPromises)
+                    .then(() => {
+                        res.json({ success: true, message: 'Noticia publicada con éxito y correos enviados', noticia_id: result.insertId });
+                    })
+                    .catch(err => {
+                        console.error('Error al enviar correos:', err);
+                        res.json({ success: true, message: 'Noticia publicada con éxito, pero hubo un problema enviando los correos' });
+                    });
+            });
+        });
+    });
+});
+
+// Obtener una noticia por ID
+app.get('/api/noticias/:id_noticia', (req, res) => {
+    const id_noticia = req.params.id_noticia;
+
+    // Consulta SQL para obtener la noticia y el nombre del editor
+    const query = `
+        SELECT n.*, 
+               CONCAT(u.primer_nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS editor_name 
+        FROM noticia n
+        LEFT JOIN usuario u ON n.id_usuario = u.id_usuario 
+        WHERE n.id_noticia = ?`;
+
+    connection.query(query, [id_noticia], (error, results) => {
+        if (error) {
+            console.error('Error en la consulta de noticia:', error);
+            return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Noticia no encontrada' });
+        }
+
+        const noticia = results[0];
+
+        // Consulta para obtener la imagen relacionada (si existe)
+        const imagenQuery = 'SELECT imagen FROM imagen WHERE id_imagen = ?';
+
+        connection.query(imagenQuery, [noticia.id_imagen], (error, imagenResults) => {
+            if (error) {
+                console.error('Error al recuperar la imagen:', error);
+                return res.status(500).json({ error: 'Error interno del servidor' });
+            }
+            noticia.imagen = imagenResults.length > 0 ? imagenResults[0].imagen : null;
+            res.json({
+                id_noticia: noticia.id_noticia,
+                titulo: noticia.titulo,
+                contenido: noticia.contenido,
+                fecha_publicacion: noticia.fecha_publicacion,
+                editor: noticia.editor_name || 'No especificado', 
+                imagen: noticia.imagen ? `data:image/jpeg;base64,${Buffer.from(noticia.imagen).toString('base64')}` : null,
+            });
+        });
+    });
+});
+
+
+// Obtener todas las noticias
+app.get('/api/noticias', (req, res) => {
+    const query = `
+        SELECT n.*, 
+               CONCAT(u.primer_nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS editor_name,
+               i.imagen AS imagen_blob
+        FROM noticia n
+        LEFT JOIN usuario u ON n.id_usuario = u.id_usuario
+        LEFT JOIN imagen i ON n.id_imagen = i.id_imagen
+    `;
+
+    connection.query(query, (error, results) => {
+        if (error) {
+            console.error('Error en la consulta de noticias:', error);
+            return res.status(500).json({ error: 'Error interno del servidor' });
+        }
+
+        // Mapear los resultados para incluir la imagen en base64
+        const noticiasConImagen = results.map(noticia => {
+            return {
+                id_noticia: noticia.id_noticia,
+                titulo: noticia.titulo,
+                contenido: noticia.contenido,
+                fecha_publicacion: noticia.fecha_publicacion,
+                editor: noticia.editor_name || 'No especificado',
+                imagen: noticia.imagen_blob ? `data:image/jpeg;base64,${Buffer.from(noticia.imagen_blob).toString('base64')}` : null
+            };
+        });
+
+        res.json(noticiasConImagen);
+    });
+});
+
+
+// Endpoint para obtener el historial de noticias
+app.get('/api/historialNoticias', (req, res) => {
+    const sqlSelectNoticias = `
+        SELECT n.titulo, n.contenido, n.fecha_publicacion,
+               CONCAT(u.primer_nombre, ' ', u.apellido_paterno, ' ', u.apellido_materno) AS editor,
+               n.id_imagen 
+        FROM noticia n
+        JOIN usuario u ON n.id_usuario = u.id_usuario`; 
+
+    connection.query(sqlSelectNoticias, (err, results) => {
+        if (err) {
+            console.error('Error al obtener las noticias:', err);
+            return res.status(500).json({ success: false, message: 'Error al obtener las noticias' });
+        }
+
+        res.json(results);
+    });
+});
+// Endpoint para obtener la imagen por id_imagen
+app.get('/api/imagenes/:id_imagen', (req, res) => {
+    const id_imagen = req.params.id_imagen;
+
+    const sqlSelectImagen = `SELECT imagen FROM imagen WHERE id_imagen = ?`;
+
+    connection.query(sqlSelectImagen, [id_imagen], (err, results) => {
+        if (err) {
+            console.error('Error al obtener la imagen:', err);
+            return res.status(500).json({ success: false, message: 'Error al obtener la imagen' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ success: false, message: 'Imagen no encontrada' });
+        }
+
+        res.set('Content-Type', 'image/jpeg'); 
+        res.send(results[0].imagen);
+    });
+});
+
+
+// Endpoint para postular un proyecto
+app.post('/api/postular_proyecto', upload.single('imagen'), (req, res) => {
+    const { nombre, presupuesto_estimado, duracion, ubicacion, objetivo, descripcion } = req.body;
+    const id_usuario = req.session.user.id_usuario;
+    let id_imagen = null;
+    const fecha_postulacion = new Date();
+
+    // Verificar si hay una imagen en la solicitud
+    if (req.file) {
+        const imagen = req.file.buffer;
+
+        // Insertar la imagen en la tabla 'imagen'
+        connection.query('INSERT INTO imagen (imagen) VALUES (?)', [imagen], (error, imagenResult) => {
+            if (error) {
+                console.error("Error al insertar imagen:", error);
+                return res.status(500).json({ success: false, message: "Error al insertar la imagen" });
+            }
+            id_imagen = imagenResult.insertId;
+
+            // Insertar el nuevo proyecto en la tabla 'proyecto' junto con la fecha de postulación
+            connection.query(
+                `INSERT INTO proyecto (nombre_proyecto, descripcion_proyecto, id_usuario, id_imagen, fecha_postulacion, ubicacion, presupuesto_estimado, duracion, objetivo) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [nombre, descripcion, id_usuario, id_imagen, fecha_postulacion, ubicacion, presupuesto_estimado, duracion, objetivo],
+                (error, proyectoResult) => {
+                    if (error) {
+                        console.error("Error al postular proyecto:", error);
+                        return res.status(500).json({ success: false, message: "Error al postular el proyecto" });
+                    }
+                    // Enviar correo de confirmación
+                    const mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: req.session.user.correo,
+                        subject: 'Confirmación de Postulación de Proyecto',
+                        text: `Su proyecto ha sido postulada exitosamente.\n\nDetalles de la postulación:\n- Nombre del Proyecto: ${nombre}\n- Ubicación: ${ubicacion}\n- Presupuesto estimado: ${presupuesto_estimado}\n- Duración (en semanas): ${duracion}\n- Objetivo del proyecto: ${objetivo}\n- Descripción: ${descripcion}\n- Fecha y hora de postulación: ${fecha_postulacion.toLocaleString()}\n\n¡Gracias por su participación!`,
+                    };
+
+                    transporter.sendMail(mailOptions, (error, info) => {
+                        if (error) {
+                            console.error("Error al enviar el correo:", error);
+                        } else {
+                            console.log('Correo enviado: ' + info.response);
+                        }
+                    });
+
+                    res.status(201).json({ success: true, message: "Proyecto postulado exitosamente" });
+                }
+            );
+        });
+    } else {
+        // Si no hay imagen, solo inserta el proyecto con la fecha de postulación
+        connection.query(
+            `INSERT INTO proyecto nombre_proyecto, descripcion_proyecto, id_usuario, fecha_postulacion, ubicacion, presupuesto_estimado, duracion, objetivon) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [nombre, descripcion, id_usuario, null, fecha_postulacion, ubicacion, presupuesto_estimado, duracion, objetivo],
+            (error, proyectoResult) => {
+                if (error) {
+                    console.error("Error al postular proyecto:", error);
+                    return res.status(500).json({ success: false, message: "Error al postular el proyecto" });
+                }
+                // Enviar correo de confirmación
+                const mailOptions = {
+                    from: 'sistemaunidadterritorial@gmail.com',
+                    to: req.session.user.correo,
+                    subject: 'Confirmación de Postulación de Proyecto',
+                    text: `Su proyecto ha sido postulada exitosamente.\n\nDetalles de la postulación:\n- Nombre del Proyecto: ${nombre}\n- Ubicación: ${ubicacion}\n- Presupuesto estimado: ${presupuesto_estimado}\n- Duración (en semanas): ${duracion}\n- Objetivo del proyecto: ${objetivo}\n- Descripción: ${descripcion}\n- Fecha y hora de postulación: ${fecha_postulacion.toLocaleString()}\n\n¡Gracias por su participación!`,
+                };
+
+                transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.error("Error al enviar el correo:", error);
+                    } else {
+                        console.log('Correo enviado: ' + info.response);
+                    }
+                });
+
+                res.status(201).json({ success: true, message: "Proyecto postulado exitosamente" });
+            }
+        );
+    }
+});
+
+
+app.get('/api/listarProyectos', (req, res) => {
+    const query = 'SELECT id_proyecto, nombre_proyecto, descripcion_proyecto, fecha_postulacion FROM proyecto';
+
+    connection.query(query, (error, proyectos) => {
+        if (error) {
+            console.error('Error al listar proyectos:', error);
+            return res.status(500).json({ message: 'Error al listar proyectos' });
+        }
+        res.json(proyectos);
+    });
+});
+
+
+
+app.get('/api/verProyecto', (req, res) => {
+    const id_proyecto = req.query.id;
+
+    const query = `
+        SELECT p.id_proyecto, p.nombre_proyecto, p.descripcion_proyecto, p.fecha_postulacion, p.presupuesto_estimado, p.ubicacion, p.duracion, p.objetivo, p.resolucion,
+               e.estado_proyecto AS estado_proyecto, p.id_estado_proyecto, i.imagen
+        FROM proyecto p
+        JOIN estado_proyecto e ON p.id_estado_proyecto = e.id_estado_proyecto
+        LEFT JOIN imagen i ON p.id_imagen = i.id_imagen
+        WHERE p.id_proyecto = ?`;
+
+    connection.query(query, [id_proyecto], (err, results) => {
+        if (err) {
+            console.error('Error al obtener los detalles del proyecto:', err);
+            return res.status(500).json({ error: 'Error al obtener los detalles del proyecto' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Proyecto no encontrado' });
+        }
+
+        const proyecto = results[0];
+        
+        // Convertir la imagen BLOB a base64 solo si existe
+        if (proyecto.imagen) {
+            proyecto.imagen = proyecto.imagen.toString('base64');
+        }
+
+        res.json(proyecto);
+    });
+});
+// Endpoint para registrar un voto
+app.post("/api/registrarVoto", (req, res) => {
+    const { id_proyecto, id_usuario, id_tipovoto } = req.body;
+
+    // Obtener la fecha y hora actuales
+    const fecha_voto = new Date();
+
+    // Insertar el voto en la tabla 'votos_proyecto'
+    const query = `
+        INSERT INTO votos_proyecto (id_proyecto, id_usuario, id_tipovoto, fecha_voto)
+        VALUES (?, ?, ?, ?)
+    `;
+    connection.query(query, [id_proyecto, id_usuario, id_tipovoto, fecha_voto], (error, results) => {
+        if (error) {
+            console.error("Error al registrar el voto:", error);
+            return res.status(500).json({ error: "Error al registrar el voto." });
+        }
+        // Enviar el correo de confirmación
+        const mailOptions = {
+            from: 'sistemaunidadterritorial@gmail.com',
+            to: req.session.user.correo,
+            subject: 'Confirmación de Voto',
+            text: `Su voto ha sido registrado exitosamente.\n\nDetalles del voto:\n- Proyecto ID: ${id_proyecto}\n- Fecha y hora de votación: ${fecha_voto.toLocaleString()}\n\n¡Gracias por participar!`,
+        };
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.error("Error al enviar el correo:", error);
+            } else {
+                console.log('Correo enviado: ' + info.response);
+            }
+        });
+        res.json({ success: true, message: "Voto registrado exitosamente." });
+    });
+});
+
+
+// Endpoint para verificar si el usuario ya ha votado en el proyecto
+app.get("/api/verificarVoto", (req, res) => {
+
+    const id_proyecto = req.query.id_proyecto;
+    const id_usuario = req.session.user.id_usuario;
+
+    // Confirmar que el id_proyecto está presente
+    if (!id_proyecto) {
+        return res.status(400).json({ error: "Falta el id_proyecto para verificar el voto." });
+    }
+
+    // Consultar si existe un voto para el usuario y el proyecto especificados
+    const query = `
+        SELECT COUNT(*) AS yaVotado
+        FROM votos_proyecto
+        WHERE id_proyecto = ? AND id_usuario = ?
+    `;
+    connection.query(query, [id_proyecto, id_usuario], (error, results) => {
+        if (error) {
+            console.error("Error al verificar el voto:", error);
+            return res.status(500).json({ error: "Error al verificar el voto." });
+        }
+
+        const yaVotado = results[0].yaVotado > 0;
+        res.json({ yaVotado });
+    });
+});
+
+// Endpoint para contar votos
+app.get("/api/contarVotos", (req, res) => {
+    const { id_proyecto } = req.query;
+    const query = `
+        SELECT 
+            SUM(CASE WHEN id_tipovoto = 1 THEN 1 ELSE 0 END) AS votosFavor,
+            SUM(CASE WHEN id_tipovoto = 2 THEN 1 ELSE 0 END) AS votosContra,
+            SUM(CASE WHEN id_tipovoto = 3 THEN 1 ELSE 0 END) AS votosNulos
+        FROM votos_proyecto
+        WHERE id_proyecto = ?
+    `;
+
+    connection.query(query, [id_proyecto], (error, results) => {
+        if (error) {
+            console.error("Error al contar votos:", error);
+            return res.status(500).json({ error: "Error al contar votos." });
+        }
+        const { votosFavor, votosContra, votosNulos } = results[0];
+        res.json({ votosFavor, votosContra, votosNulos });
+    });
+});
+// Endpoint para obtener estados de la tabla estado_proyecto
+app.get("/api/obtenerEstadosProyecto", (req, res) => {
+    const query = "SELECT id_estado_proyecto, estado_proyecto FROM estado_proyecto";
+
+    connection.query(query, (error, results) => {
+        if (error) {
+            console.error("Error al obtener los estados del proyecto:", error);
+            return res.status(500).json({ error: "Error al obtener estados." });
+        }
+        res.json(results);
+    });
+});
+
+// Endpoint para cambiar el estado del proyecto
+app.post("/api/cambiarEstadoProyecto", (req, res) => {
+    const { id_proyecto, id_estado_proyecto, resolucion } = req.body;
+
+    // Convertir id_estado_proyecto a número entero
+    const estadoProyectoInt = parseInt(id_estado_proyecto, 10);
+    const proyectoInt = parseInt(id_proyecto, 10);
+    const fechaResolucion = new Date();
+
+    // Cambiar el estado del proyecto en la base de datos
+    connection.query(
+        "UPDATE proyecto SET id_estado_proyecto = ?, fecha_resolucion = ? WHERE id_proyecto = ?",
+        [estadoProyectoInt, fechaResolucion, proyectoInt],
+        (error, result) => {
+            if (error) {
+                console.error("Error al actualizar el estado del proyecto:", error);
+                return res.status(500).json({ success: false, message: "Error al actualizar el estado del proyecto" });
+            }
+
+            // Si el estado es 5, guardar la resolución en la base de datos
+            if (estadoProyectoInt === 5) {
+                connection.query(
+                    "UPDATE proyecto SET resolucion = ? WHERE id_proyecto = ?",
+                    [resolucion, proyectoInt],
+                    (error) => {
+                        if (error) {
+                            console.error("Error al guardar la resolución del proyecto:", error);
+                            return res.status(500).json({ success: false, message: "Error al guardar la resolución del proyecto" });
+                        }
+                    }
+                );
+            }
+
+            // Obtener el correo del postulante
+            connection.query(
+                "SELECT correo FROM usuario WHERE id_usuario = (SELECT id_usuario FROM proyecto WHERE id_proyecto = ?)",
+                [proyectoInt],
+                (error, results) => {
+                    if (error || results.length === 0) {
+                        console.error("Error al obtener el correo del postulante:", error);
+                        return res.status(500).json({ success: false, message: "Error al obtener el correo del postulante" });
+                    }
+
+                    const correoPostulante = results[0].correo;
+
+                    // Definir el mensaje y destinatarios según el estado del proyecto
+                    let mailOptions = {};
+                    let correoUsuarios = [];
+
+                    if (estadoProyectoInt === 4) {
+                        // Configuración del correo para aprobación
+                        mailOptions = {
+                            from: 'sistemaunidadterritorial@gmail.com',
+                            to: correoPostulante,
+                            subject: 'Confirmación de Aprobación de Proyecto',
+                            text: `Su proyecto ha sido aprobado.\n\nDetalles:\n- Fecha y hora de la aprobación: ${new Date().toLocaleString()}\n\n¡Gracias por su participación!`,
+                        };
+
+                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6
+                        connection.query(
+                            "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
+                            (error, roleResults) => {
+                                if (error) {
+                                    console.error("Error al obtener correos de usuarios:", error);
+                                    return res.status(500).json({ success: false, message: "Error al obtener correos de usuarios" });
+                                }
+                                correoUsuarios = roleResults.map(user => user.correo).join(",");
+
+                                // Enviar correo a todos los usuarios con los roles especificados
+                                const mailOptionsRoles = {
+                                    from: 'sistemaunidadterritorial@gmail.com',
+                                    to: correoUsuarios, // Correos de usuarios con roles especificados
+                                    subject: 'Aprobación de Proyecto',
+                                    text: `El proyecto con ID: ${proyectoInt} ha sido aprobado.\n\n¡Gracias!`,
+                                };
+
+                                // Enviar correos
+                                transporter.sendMail(mailOptions, (error) => {
+                                    if (error) {
+                                        console.error("Error al enviar el correo al postulante:", error);
+                                    }
+                                });
+                                
+                                transporter.sendMail(mailOptionsRoles, (error) => {
+                                    if (error) {
+                                        console.error("Error al enviar correos a los usuarios:", error);
+                                    }
+                                });
+                            }
+                        );
+                    } else if (estadoProyectoInt === 5) {
+                        // Configuración del correo para rechazo
+                        mailOptions = {
+                            from: 'sistemaunidadterritorial@gmail.com',
+                            to: correoPostulante,
+                            subject: 'Notificación de Rechazo de Proyecto',
+                            text: `Su proyecto ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
+                        };
+
+                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6
+                        connection.query(
+                            "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
+                            (error, roleResults) => {
+                                if (error) {
+                                    console.error("Error al obtener correos de usuarios:", error);
+                                    return res.status(500).json({ success: false, message: "Error al obtener correos de usuarios" });
+                                }
+                                correoUsuarios = roleResults.map(user => user.correo).join(",");
+
+                                // Enviar correo a todos los usuarios con los roles especificados (directiva)
+                                const mailOptionsRoles = {
+                                    from: 'sistemaunidadterritorial@gmail.com',
+                                    to: correoUsuarios,
+                                    subject: 'Rechazo de Proyecto',
+                                    text: `El proyecto con ID: ${proyectoInt} ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
+                                };
+
+                                transporter.sendMail(mailOptions, (error) => {
+                                    if (error) {
+                                        console.error("Error al enviar el correo al postulante:", error);
+                                    }
+                                });
+
+                                transporter.sendMail(mailOptionsRoles, (error) => {
+                                    if (error) {
+                                        console.error("Error al enviar correos a los usuarios:", error);
+                                    }
+                                });
+                            }
+                        );
+                    }
+
+                    res.json({ success: true, message: "Estado del proyecto cambiado exitosamente" });
+                }
+            );
+        }
+    );
+});
+
+// Crear actividad
+app.post("/api/crearActividad", (req, res) => {
+    const { nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario } = req.body;
+    const fecha_creacion = new Date();
+    const query = `
+        INSERT INTO actividad (nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, fecha_creacion)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, fecha_creacion], (error, result) => {
+        if (error) {
+            console.error("Error al crear la actividad:", error);
+            return res.status(500).json({ success: false, message: "Error al crear la actividad" });
+        }
+        res.json({ success: true, message: "Actividad creada exitosamente", actividadId: result.insertId });
+    });
+});
+
+//Modificar actividad
+app.put("/api/modificarActividad", (req, res) => {
+    const { id_actividad, nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario } = req.body;
+
+
+    const query = `
+        UPDATE actividad
+        SET nombre_actividad = ?, descripcion_actividad = ?, cupo = ?, fecha_actividad = ?, ubicacion = ?, id_usuario = ?
+        WHERE id_actividad = ?
+    `;
+
+    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, id_actividad], (error, result) => {
+        if (error) {
+            console.error("Error al modificar la actividad:", error);
+            return res.status(500).json({ success: false, message: "Error al modificar la actividad" });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ success: false, message: "Actividad no encontrada" });
+        }
+
+        res.json({ success: true, message: "Actividad modificada exitosamente" });
+    });
+});
+// Ver actividad según id
+app.get("/api/actividades/:idActividad", (req, res) => {
+    const idActividad = req.params.idActividad;
+
+    connection.query(
+        "SELECT * FROM actividad WHERE id_actividad = ?",
+        [idActividad],
+        (error, results) => {
+            if (error || results.length === 0) {
+                console.error("Error al obtener la actividad:", error);
+                return res.status(404).json({ success: false, message: "Actividad no encontrada" });
+            }
+            res.json({ success: true, actividad: results[0] });
+        }
+    );
+});
+
+
+// Endpoint para inscribirse en una actividad
+app.post("/api/inscribir", (req, res) => {
+    const { id_usuario, id_actividad, correo } = req.body;
+    const fecha_inscripcion = new Date();
+
+    // Primero, contar inscripciones para la actividad
+    connection.query(
+        "SELECT COUNT(*) AS count FROM inscripcion WHERE id_actividad = ? AND id_estadoInscripcion = 1",
+        [id_actividad],
+        (error, results) => {
+            if (error) {
+                console.error("Error al contar inscripciones:", error);
+                return res.status(500).json({ success: false, message: "Error al contar inscripciones" });
+            }
+
+            const totalInscripciones = results[0].count;
+
+            // Obtener el cupo disponible para la actividad
+            connection.query(
+                "SELECT cupo FROM actividad WHERE id_actividad = ?",
+                [id_actividad],
+                (error, results) => {
+                    if (error || results.length === 0) {
+                        console.error("Error al obtener el cupo de la actividad:", error);
+                        return res.json({ success: false, message: "Actividad no encontrada" });
+                    }
+
+                    const cupoDisponible = results[0].cupo;
+
+                    // Verificar si hay suficiente cupo
+                    if (totalInscripciones >= cupoDisponible) {
+                        return res.status(400).json({ success: false, message: "No hay cupo disponible para inscribirse en esta actividad." });
+                    }
+
+                    // Si hay cupo, proceder a inscribir al usuario
+                    connection.query(
+                        "INSERT INTO inscripcion (id_usuario, id_actividad, fecha_inscripcion) VALUES (?, ?, ?)",
+                        [id_usuario, id_actividad, fecha_inscripcion],
+                        (error, result) => {
+                            if (error) {
+                                console.error("Error al inscribir al usuario:", error);
+                                return res.status(500).json({ success: false, message: "Error al inscribirse en la actividad" });
+                            }
+
+                            // Si la inscripción fue exitosa, enviar correo de confirmación
+                            const mailOptions = {
+                                from: 'sistemaunidadterritorial@gmail.com',
+                                to: correo,
+                                subject: 'Confirmación de Inscripción en Actividad',
+                                text: `¡Hola! Te has inscrito exitosamente en la actividad con ID ${id_actividad}. Fecha de inscripción: ${fecha_inscripcion.toLocaleString()}`,
+                            };
+
+                            transporter.sendMail(mailOptions, (error, info) => {
+                                if (error) {
+                                    console.error("Error al enviar el correo:", error);
+                                    return res.status(500).json({ success: false, message: "Inscripción realizada, pero no se pudo enviar el correo de confirmación." });
+                                }
+                                console.log("Correo de confirmación enviado:", info.response);
+                                res.json({ success: true, message: "Inscripción realizada con éxito y correo de confirmación enviado." });
+                            });
+                        }
+                    );
+                }
+            );
+        }
+    );
+});
+
+
+//ver todas las actividades
+app.get("/api/actividades", (req, res) => {
+    connection.query("SELECT * FROM actividad", (error, results) => {
+        if (error) {
+            console.error("Error al obtener las actividades:", error);
+            return res.status(500).json({ success: false, message: "Error al obtener las actividades" });
+        }
+        res.json({ success: true, actividades: results });
+    });
+});
+
+// Contar inscripciones para una actividad específica
+app.get("/api/inscripciones/count/actividad/:idActividad", (req, res) => {
+    const idActividad = req.params.idActividad;
+
+    connection.query(
+        "SELECT COUNT(*) AS count FROM inscripcion WHERE id_actividad = ? AND id_estadoInscripcion = 1",
+        [idActividad],
+        (error, results) => {
+            if (error) {
+                console.error("Error al contar inscripciones:", error);
+                return res.status(500).json({ success: false, message: "Error interno del servidor" });
+            }
+
+            const count = results[0].count;
+            res.json(results[0]);
+        }
+    );
+});
+
+// Contar inscripciones de un usuario para una actividad
+app.get("/api/inscripciones/count/:idUsuario/:idActividad", (req, res) => {
+    const idUsuario = req.params.idUsuario;
+    const idActividad = req.params.idActividad;
+
+    connection.query(
+        "SELECT COUNT(*) AS count FROM inscripcion WHERE id_usuario = ? AND id_actividad = ? AND id_estadoInscripcion = 1",
+        [idUsuario, idActividad],
+        (error, results) => {
+            if (error) {
+                console.error("Error al contar inscripciones:", error);
+                return res.status(500).json({ success: false, message: "Error al contar inscripciones" });
+            }
+            res.json({ count: results[0].count });
+        }
+    );
+});
+
+// Obtener inscripciones de un usuario específico
+app.get('/api/inscripciones/:idUsuario', (req, res) => {
+    const idUsuario = req.params.idUsuario;
+
+    connection.query(
+        `SELECT 
+    inscripcion.id_inscripcion,
+    inscripcion.fecha_inscripcion,
+    inscripcion.id_estadoInscripcion,
+    actividad.id_actividad,
+    actividad.nombre_actividad AS nombre_actividad,
+    actividad.descripcion_actividad AS descripcion_actividad,
+    actividad.cupo,
+    actividad.fecha_actividad AS fecha_actividad,
+    actividad.ubicacion
+FROM 
+    inscripcion 
+JOIN 
+    actividad ON inscripcion.id_actividad = actividad.id_actividad 
+WHERE 
+    inscripcion.id_usuario = ?;
+`,
+        [idUsuario],
+        (error, results) => {
+            if (error) {
+                console.error("Error al obtener inscripciones:", error);
+                return res.status(500).json({ success: false, message: "Error al obtener inscripciones." });
+            }
+
+            res.json({ success: true, inscripciones: results });
+        }
+    );
+});
+
+// Cancelar inscripción por el usuario
+
+app.put('/api/cancelar-inscripcion/:idInscripcion', (req, res) => {
+    const idInscripcion = req.params.idInscripcion;
+    const fecha_cancelacion = new Date();
+    const motivoCancelacion = "Cancelada por el usuario";
+    const { correo } = req.body;
+    console.log(correo);
+    // Actualizar la inscripción con el estado de cancelación
+    connection.query(
+        `UPDATE inscripcion 
+         SET id_estadoInscripcion = 2, motivoCancelacion = ?, fecha_cancelacion = ? 
+         WHERE id_inscripcion = ?`,
+        [motivoCancelacion, fecha_cancelacion, idInscripcion],
+        (error, results) => {
+            if (error) {
+                console.error("Error al cancelar inscripción:", error);
+                return res.status(500).json({ success: false, message: "Error al cancelar la inscripción." });
+            }
+
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ success: false, message: "Inscripción no encontrada." });
+            }
+
+            // Enviar correo de confirmación al usuario
+            const mailOptions = {
+                from: 'sistemaunidadterritorial@gmail.com',
+                to: correo,
+                subject: 'Confirmación de Cancelación de Inscripción',
+                text: `Tu inscripción con ID ${idInscripcion} ha sido cancelada exitosamente. Motivo: ${motivoCancelacion}. Fecha de cancelación: ${fecha_cancelacion.toLocaleString()}`,
+            };
+
+            transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
+                    console.error("Error al enviar el correo:", error);
+                    return res.status(500).json({ success: false, message: "Inscripción cancelada, pero no se pudo enviar el correo de confirmación." });
+                }
+                console.log("Correo de confirmación enviado:", info.response);
+                res.json({ success: true, message: "Inscripción cancelada con éxito y correo de confirmación enviado." });
+            });
+        }
+    );
+});
+// Endpoint para obtener las inscripciones
+app.get('/api/obtenerInscripciones', (req, res) => {
+    const query = `
+        SELECT 
+            i.id_inscripcion, 
+            i.id_usuario, 
+            i.id_actividad, 
+            a.nombre_actividad, 
+            a.descripcion_actividad, 
+            a.cupo, 
+            a.fecha_actividad, 
+            a.ubicacion, 
+            a.fecha_creacion, 
+            i.id_estadoInscripcion, 
+            i.fecha_inscripcion 
+        FROM inscripcion i
+        JOIN actividad a ON i.id_actividad = a.id_actividad
+        WHERE i.id_estadoInscripcion != 2`;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error('Error al obtener inscripciones:', err);
+            return res.status(500).json({ message: 'Error al obtener inscripciones.' });
+        }
+        res.json({ success: true, inscripciones: results });
+    });
+});
+
+// Endpoint para cancelar una inscripción
+app.put('/api/cancelarInscripcion/:id', (req, res) => {
+    const { id } = req.params;
+    const { id_estadoInscripcion, motivoCancelacion } = req.body;
+    const fecha_cancelacion = new Date();
+
+    // Primero, obtener el id_usuario y el correo del usuario según la inscripción
+    const getUserQuery = `
+        SELECT u.correo 
+        FROM usuario u 
+        JOIN inscripcion i ON u.id_usuario = i.id_usuario 
+        WHERE i.id_inscripcion = ?`;
+
+    connection.query(getUserQuery, [id], (err, results) => {
+        if (err) {
+            console.error('Error al obtener el correo del usuario:', err);
+            return res.status(500).json({ message: 'Error al obtener el correo del usuario.' });
+        }
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado para esta inscripción.' });
+        }
+
+        const correoUsuario = results[0].correo;
+
+        // Proceder con la cancelación de la inscripción
+        const cancelQuery = `
+            UPDATE inscripcion 
+            SET id_estadoInscripcion = ?, motivoCancelacion = ?, fecha_cancelacion = ? 
+            WHERE id_inscripcion = ?`;
+
+        connection.query(cancelQuery, [id_estadoInscripcion, motivoCancelacion, fecha_cancelacion, id], (err, results) => {
+            if (err) {
+                console.error('Error al cancelar inscripción:', err);
+                return res.status(500).json({ message: 'Error al cancelar inscripción.' });
+            }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ message: 'Inscripción no encontrada.' });
+            }
+
+
+            const mailOptions = {
+                from: 'sistemaunidadterritorial@gmail.com',
+                to: correoUsuario,
+                subject: 'Confirmación de Cancelación de Inscripción',
+                text: `La inscripción ha sido cancelada. Motivo de cancelación: ${motivoCancelacion}. Fecha de cancelación: ${fecha_cancelacion.toLocaleString()}`
+            };
+
+            // Enviar correo de confirmación
+            transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
+                    console.error('Error al enviar el correo:', error);
+                    return res.status(500).json({ message: 'Inscripción cancelada, pero hubo un error al enviar el correo.' });
+                }
+                res.json({ message: 'Inscripción cancelada exitosamente y correo enviado.' });
+            });
+        });
+    });
+});
+
+app.get('/api/historial-inscripciones', (req, res) => {
+    const query = `
+        SELECT 
+            i.id_inscripcion,
+            i.id_usuario,
+            i.id_actividad,
+            a.nombre_actividad,
+            a.fecha_actividad,
+            a.ubicacion,
+            i.fecha_inscripcion,
+            i.id_estadoInscripcion,
+            i.motivoCancelacion
+        FROM inscripcion i
+        JOIN actividad a ON i.id_actividad = a.id_actividad`;
+
+    connection.query(query, (err, results) => {
+        if (err) {
+            console.error('Error al obtener historial de inscripciones:', err);
+            return res.status(500).json({ success: false, message: 'Error al obtener historial de inscripciones.' });
+        }
+        res.json({ success: true, inscripciones: results });
+    });
+});
 
 
 
 // Proteger la pagina segun roles 
+// 1	presidente
+// 2	directiva
+// 3	tesorero
+// 4	secretario
+// 5	vecino
+// 6	Developer
+
+// Faltan proteger mas páginas de gestión de recursos
+
 // Gestión usuarios
 app.get('/gestion_usuarios.html', checkRole([1, 4, 6]), (req, res) => {
     res.sendFile(path.join(__dirname, 'gestion_usuarios/gestion_usuarios.html'));
@@ -580,6 +1934,10 @@ app.get('/gestion_reservas.html', checkRole([1, 4, 6]), (req, res) => {
 // Gestión MIS reservas
 app.get('/mis_reservas.html', checkRole([1, 2, 3, 4, 5, 6]), (req, res) => {
     res.sendFile(path.join(__dirname, 'profile/mis_reservas.html'));
+});
+// Gestión noticias
+app.get('/gestion_noticia.html', checkRole([1, 2, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'noticia/gestion_noticia.html'));
 });
 
 

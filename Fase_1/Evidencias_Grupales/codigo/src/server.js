@@ -102,8 +102,6 @@ app.post('/api/reservar', (req, res) => {
             console.error('Error al realizar la reserva:', error);
             return res.status(500).json({ error: 'Error al realizar la reserva: ' + error.message });
         }
-
-        // Obtener la fecha de creación de la reserva
         const fecha_creacion = new Date(); 
 
         // Obtener el correo del usuario y la descripción del recurso
@@ -758,7 +756,7 @@ const getChileDateTime = () => {
 app.post("/api/generarCertificado", (req, res) => {
     const { rut, nombre, domicilio, motivo, correo } = req.body;
     const rutFormateado = formatearRUT(rut);
-    // Validación de los campos
+    // Validación simple de los campos
     if (!rutFormateado || !nombre || !domicilio || !motivo) {
         return res.status(400).json({ error: "Por favor, completa todos los campos." });
     }
@@ -1041,6 +1039,8 @@ app.post('/api/noticias/subir', upload.single('imagen'), (req, res) => {
                             }
                         ],
                     };
+                
+                    // Enviar el correo
                     return transporter.sendMail(mailOptions);
                 });
 
@@ -1089,7 +1089,11 @@ app.get('/api/noticias/:id_noticia', (req, res) => {
                 console.error('Error al recuperar la imagen:', error);
                 return res.status(500).json({ error: 'Error interno del servidor' });
             }
+
+            // Establecer la imagen si existe
             noticia.imagen = imagenResults.length > 0 ? imagenResults[0].imagen : null;
+
+            // Devuelve la noticia como respuesta
             res.json({
                 id_noticia: noticia.id_noticia,
                 titulo: noticia.titulo,
@@ -1101,7 +1105,6 @@ app.get('/api/noticias/:id_noticia', (req, res) => {
         });
     });
 });
-
 
 // Obtener todas las noticias
 app.get('/api/noticias', (req, res) => {
@@ -1128,6 +1131,7 @@ app.get('/api/noticias', (req, res) => {
                 contenido: noticia.contenido,
                 fecha_publicacion: noticia.fecha_publicacion,
                 editor: noticia.editor_name || 'No especificado',
+                // Convertir la imagen blob a base64
                 imagen: noticia.imagen_blob ? `data:image/jpeg;base64,${Buffer.from(noticia.imagen_blob).toString('base64')}` : null
             };
         });
@@ -1308,8 +1312,6 @@ app.get('/api/verProyecto', (req, res) => {
 // Endpoint para registrar un voto
 app.post("/api/registrarVoto", (req, res) => {
     const { id_proyecto, id_usuario, id_tipovoto } = req.body;
-
-    // Obtener la fecha y hora actuales
     const fecha_voto = new Date();
 
     // Insertar el voto en la tabla 'votos_proyecto'
@@ -1406,8 +1408,6 @@ app.get("/api/obtenerEstadosProyecto", (req, res) => {
 // Endpoint para cambiar el estado del proyecto
 app.post("/api/cambiarEstadoProyecto", (req, res) => {
     const { id_proyecto, id_estado_proyecto, resolucion } = req.body;
-
-    // Convertir id_estado_proyecto a número entero
     const estadoProyectoInt = parseInt(id_estado_proyecto, 10);
     const proyectoInt = parseInt(id_proyecto, 10);
     const fechaResolucion = new Date();
@@ -1422,7 +1422,7 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                 return res.status(500).json({ success: false, message: "Error al actualizar el estado del proyecto" });
             }
 
-            // Si el estado es 5, guardar la resolución en la base de datos
+            // Si el estado es 5 (rechazado), guardar la resolución en la base de datos
             if (estadoProyectoInt === 5) {
                 connection.query(
                     "UPDATE proyecto SET resolucion = ? WHERE id_proyecto = ?",
@@ -1447,8 +1447,6 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                     }
 
                     const correoPostulante = results[0].correo;
-
-                    // Definir el mensaje y destinatarios según el estado del proyecto
                     let mailOptions = {};
                     let correoUsuarios = [];
 
@@ -1471,10 +1469,10 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                                 }
                                 correoUsuarios = roleResults.map(user => user.correo).join(",");
 
-                                // Enviar correo a todos los usuarios con los roles especificados
+                                // Enviar correo a todos los usuarios con los roles especificados (directiva y developer)
                                 const mailOptionsRoles = {
                                     from: 'sistemaunidadterritorial@gmail.com',
-                                    to: correoUsuarios, // Correos de usuarios con roles especificados
+                                    to: correoUsuarios,
                                     subject: 'Aprobación de Proyecto',
                                     text: `El proyecto con ID: ${proyectoInt} ha sido aprobado.\n\n¡Gracias!`,
                                 };
@@ -1502,7 +1500,7 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                             text: `Su proyecto ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
                         };
 
-                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6
+                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6 (directiva y developer)
                         connection.query(
                             "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
                             (error, roleResults) => {
@@ -1512,7 +1510,7 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                                 }
                                 correoUsuarios = roleResults.map(user => user.correo).join(",");
 
-                                // Enviar correo a todos los usuarios con los roles especificados (directiva)
+                                // Enviar correo a todos los usuarios con los roles especificados
                                 const mailOptionsRoles = {
                                     from: 'sistemaunidadterritorial@gmail.com',
                                     to: correoUsuarios,
@@ -1520,6 +1518,7 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                                     text: `El proyecto con ID: ${proyectoInt} ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
                                 };
 
+                                // Enviar correos
                                 transporter.sendMail(mailOptions, (error) => {
                                     if (error) {
                                         console.error("Error al enviar el correo al postulante:", error);

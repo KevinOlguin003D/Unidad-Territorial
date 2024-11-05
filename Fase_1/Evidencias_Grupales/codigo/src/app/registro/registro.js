@@ -14,7 +14,9 @@ document.querySelector('form').addEventListener('submit', async (event) => {
         telefono: document.getElementById('telefono').value,
         direccion: document.getElementById('direccion').value,
         fechaNacimiento: document.getElementById('fecha_nacimiento').value,
-        password: document.getElementById('password').value
+        password: document.getElementById('password').value,
+        recibirNotificaciones: document.getElementById('recibir_notificaciones').checked
+
     };
 
     console.log('Datos a enviar:', formData);
@@ -32,7 +34,7 @@ document.querySelector('form').addEventListener('submit', async (event) => {
 
     if (edad < 14) {
         alert("Debes tener al menos 14 años para registrarte.");
-        return; // No enviar el formulario si no cumple con la edad mínima
+        return;
     }
     try {
         const response = await fetch('http://localhost:3000/register', {

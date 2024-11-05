@@ -1,13 +1,21 @@
 <!DOCTYPE html>
 <html lang="es">
   <link rel="stylesheet" href="registro_component.css">
-  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&amp;display=swap" rel="stylesheet"/>
+  <style>
+    body { 
+      background-image: url('../imagenes/image.png');
+      background-repeat: no-repeat;
+      background-size: cover;
+    }
+  </style>
+
 <body>
-    
 <div class="register-container">
     <div class="register-card">
       <h2>Crear una cuenta</h2>
-      <p class="subtitle">Completa el formulario para registrarte</p>
+      <p class="subtitle">Complete el formulario para registrarte</p>
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
         <div class="form-group">
           <label for="rut">RUT</label>
@@ -79,12 +87,20 @@
               <span *ngIf="registerForm.get('password')?.errors?.['minlength']">La contraseña debe tener al menos 6 caracteres.</span>
             </div>
           </div>
+          <div>
+            <label for="recibir_notificaciones">
+              Deseo recibir notificaciones por correo electrónico
+              <input type="checkbox" id="recibir_notificaciones" formControlName="recibir_notificaciones">
+            </label>
+          </div>
+  
         <button type="submit" [disabled]="!registerForm.valid">Registrarse</button>
       </form>
       <p class="login-link">¿Ya tienes una cuenta? <a href="../login/login_component.html">Iniciar sesión</a></p>
-      
-
     </div>
   </div>
   <script src="registro.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/3.10.2/fullcalendar.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
 </body>
+</html>

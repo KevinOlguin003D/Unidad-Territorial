@@ -3,32 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Reservas</title>
-  
+    <title>Reservas</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="gestion_reservas.js"></script>
+    <script src="./gestion_reservas.js" defer></script>
+    <script src="cambio_header.js"></script>
 </head>
 <body>
-    <h1>Gestión de Reservas</h1>
     <table id="reservasTable">
-    <thead>
-        <tr>
-            <th>ID Reserva</th>
-            <th>Fecha Reserva</th>
-            <th>Descripción Recurso</th>
-            <th>ID Usuario</th>
-            <th>Hora Inicio</th>
-            <th>Hora Fin</th>
-            <th>Motivo</th>
-            <th>Fecha Creación</th>
-            <th>Estado</th> 
-            <th>Acciones</th> 
-        </tr>
-    </thead>
-    <tbody>
-        <!-- Las reservas se cargan aquí -->
-    </tbody>
-</table>
+        <thead>
+            <tr>
+                <th>ID Reserva</th>
+                <th>Fecha Reserva</th>
+                <th>Descripción Recurso</th>
+                <th>ID Usuario</th>
+                <th>Hora Inicio</th>
+                <th>Hora Fin</th>
+                <th>Motivo</th>
+                <th>Fecha Creación</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
+    <!-- Modal para ingresar el motivo de cancelación -->
+    <div id="modal" style="display:none;">
+        <h2>Cancelar Reserva</h2>
+        <label for="motivoCancelacion">Motivo de Cancelación:</label>
+        <input type="text" id="motivoCancelacion" required>
+        <button id="confirmarCancelacion">Confirmar Cancelación</button>
+        <button id="cancelar">Cancelar</button>
+    </div>
 </body>
 </html>

@@ -1460,7 +1460,7 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                             text: `Su proyecto ha sido aprobado.\n\nDetalles:\n- Fecha y hora de la aprobación: ${new Date().toLocaleString()}\n\n¡Gracias por su participación!`,
                         };
 
-                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6
+                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6 (directiva y developer)
                         connection.query(
                             "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
                             (error, roleResults) => {
@@ -1544,52 +1544,177 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
 
 // Crear actividad
 app.post("/api/crearActividad", (req, res) => {
-    const { nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario } = req.body;
+    const { nombre_actividad, descripcion_actividad, cupo, fechaFormateada, ubicacion, id_usuario } = req.body;
     const fecha_creacion = new Date();
+
+    // Query para insertar la actividad
     const query = `
         INSERT INTO actividad (nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, fecha_creacion)
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, fecha_creacion], (error, result) => {
+    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fechaFormateada, ubicacion, id_usuario, fecha_creacion], (error, result) => {
         if (error) {
             console.error("Error al crear la actividad:", error);
             return res.status(500).json({ success: false, message: "Error al crear la actividad" });
         }
-        res.json({ success: true, message: "Actividad creada exitosamente", actividadId: result.insertId });
+
+        // Obtener el correo del usuario (organizador)
+        const queryCorreo = `SELECT correo FROM usuario WHERE id_usuario = ?`;
+        
+        connection.query(queryCorreo, [id_usuario], (error, rows) => {
+            if (error) {
+                console.error("Error al obtener el correo del usuario:", error);
+                return res.status(500).json({ success: false, message: "Error al obtener el correo del organizador" });
+            }
+
+            if (rows.length === 0) {
+                console.error("Usuario no encontrado");
+                return res.status(404).json({ success: false, message: "Usuario no encontrado" });
+            }
+
+            const correoOrganizador = rows[0].correo;
+
+            // Crear el correo de confirmación de solicitud en proceso
+            const mailOptions = {
+                from: 'sistemaunidadterritorial@gmail.com',
+                to: correoOrganizador,  // Correo del organizador
+                subject: 'Solicitud de Actividad Recibida',
+                text: `Su solicitud de actividad ha sido recibida y está en proceso.\n\nDetalles de la actividad:\n- Nombre de la actividad: ${nombre_actividad}\n- Fecha de creación: ${fecha_creacion.toLocaleString()}\n- Estado: Solicitud en proceso.\n\nNos pondremos en contacto con usted pronto para darle más información.`,
+            };
+
+            // Enviar correo
+            transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
+                    console.error("Error al enviar el correo:", error);
+                    return res.status(500).json({ success: false, message: "Error al enviar el correo" });
+                }
+                console.log("Correo enviado: " + info.response);
+            });
+
+            // Responder al cliente con éxito
+            res.json({ success: true, message: "Actividad creada exitosamente", actividadId: result.insertId });
+        });
+    });
+});
+// Endpoint para obtener los estados de actividad
+app.get("/api/estadosActividad", (req, res) => {
+    connection.query(`
+        SELECT id_estadoActividad, estado_actividad
+        FROM estado_actividad
+    `, (error, results) => {
+        if (error) {
+            console.error("Error al obtener los estados de actividad:", error);
+            return res.status(500).json({ success: false, message: "Error al obtener los estados de actividad" });
+        }
+        res.json({ success: true, estados: results });
     });
 });
 
-//Modificar actividad
 app.put("/api/modificarActividad", (req, res) => {
-    const { id_actividad, nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario } = req.body;
-
-
+    let { 
+        id_actividad, 
+        nombre_actividad, 
+        descripcion_actividad, 
+        cupo, 
+        fecha_actividad, 
+        ubicacion, 
+        id_usuario, 
+        id_estadoActividad, 
+        motivo 
+    } = req.body;
+    let fechaCancelacion = new Date();
+    id_estadoActividad = parseInt(id_estadoActividad);
+    // Query para actualizar la actividad
     const query = `
         UPDATE actividad
-        SET nombre_actividad = ?, descripcion_actividad = ?, cupo = ?, fecha_actividad = ?, ubicacion = ?, id_usuario = ?
+        SET 
+            nombre_actividad = ?, 
+            descripcion_actividad = ?, 
+            cupo = ?, 
+            fecha_actividad = ?, 
+            ubicacion = ?, 
+            id_usuario = ?, 
+            id_estadoActividad = ?,
+            motivo = ?,
+            fechaCancelacion = ?
         WHERE id_actividad = ?
     `;
-
-    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, id_actividad], (error, result) => {
+    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, id_estadoActividad, motivo, fechaCancelacion, id_actividad], (error, result) => {
         if (error) {
-            console.error("Error al modificar la actividad:", error);
-            return res.status(500).json({ success: false, message: "Error al modificar la actividad" });
+            console.error("Error al actualizar la actividad:", error);
+            return res.status(500).json({ success: false, message: "Error al actualizar la actividad" });
         }
 
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: "Actividad no encontrada" });
-        }
+        // Obtener el correo del organizador
+        connection.query(
+            "SELECT correo FROM usuario WHERE id_usuario = (SELECT id_usuario FROM actividad WHERE id_actividad = ?)",
+            [id_actividad],
+            (error, results) => {
+                if (error || results.length === 0) {
+                    console.error("Error al obtener el correo del organizador:", error);
+                    return res.status(500).json({ success: false, message: "Error al obtener el correo del organizador" });
+                }
+                const correoOrganizador = results[0].correo;
+                let mailOptions = {};
 
-        res.json({ success: true, message: "Actividad modificada exitosamente" });
+                // Comprobación de los estados 1=aprobada 2=rechazada 5=cancelada 
+                if (id_estadoActividad === 1) {
+                    mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: correoOrganizador,
+                        subject: 'Confirmación de Aprobación de Actividad',
+                        text: `Su actividad ha sido aprobada.\n\n- Fecha de aprobación: ${new Date().toLocaleString()}\n\n¡Gracias por su participación!`,
+                    };
+                } else if (id_estadoActividad === 2) {
+                    mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: correoOrganizador,
+                        subject: 'Notificación de Rechazo de Actividad',
+                        text: `Lamentablemente, su actividad ha sido rechazada.\n\nDetalles:${motivo}\n- Fecha de rechazo: ${new Date().toLocaleString()}\n\nGracias por su comprensión.`,
+                    };
+                } else if (id_estadoActividad === 5) {
+                    mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: correoOrganizador,
+                        subject: 'Notificación de Cancelación de Actividad',
+                        text: `Lamentablemente, su actividad ha sido cancelada.\n\nDetalles:${motivo}\n- Fecha de cancelación: ${new Date().toLocaleString()}\n\nGracias por su comprensión.`,
+                    };
+                } else {
+                    return res.status(200).json({ success: true, message: "Cambio de estado de la solicitud de actividad exitoso" });
+                }
+
+                if (mailOptions.to) {
+                    // Enviar el correo al organizador
+                    transporter.sendMail(mailOptions, (error, info) => {
+                        if (error) {
+                            console.error("Error al enviar el correo al organizador:", error);
+                            return res.status(500).json({ success: false, message: "Error al enviar el correo" });
+                        }
+
+                    });
+                } else {
+                    console.error("No se configuró el destinatario del correo.");
+                    return res.status(500).json({ success: false, message: "No se configuró el destinatario del correo" });
+                }
+                res.json({ success: true, message: "Estado de la actividad cambiado exitosamente" });
+            }
+        );
     });
 });
+
+
+
 // Ver actividad según id
 app.get("/api/actividades/:idActividad", (req, res) => {
     const idActividad = req.params.idActividad;
 
     connection.query(
-        "SELECT * FROM actividad WHERE id_actividad = ?",
+        `SELECT a.*, 
+                CONCAT(u.primer_nombre, ' ', u.apellido_paterno) AS nombreUsuario 
+         FROM actividad a
+         JOIN usuario u ON a.id_usuario = u.id_usuario
+         WHERE a.id_actividad = ?`,
         [idActividad],
         (error, results) => {
             if (error || results.length === 0) {
@@ -1600,6 +1725,7 @@ app.get("/api/actividades/:idActividad", (req, res) => {
         }
     );
 });
+
 
 
 // Endpoint para inscribirse en una actividad
@@ -1673,7 +1799,14 @@ app.post("/api/inscribir", (req, res) => {
 
 //ver todas las actividades
 app.get("/api/actividades", (req, res) => {
-    connection.query("SELECT * FROM actividad", (error, results) => {
+    connection.query(`
+        SELECT a.*, 
+               CONCAT(u.primer_nombre, ' ', u.apellido_paterno) AS nombreUsuario,
+               e.estado_actividad AS estado_actividad
+        FROM actividad a
+        JOIN usuario u ON a.id_usuario = u.id_usuario
+        JOIN estado_actividad e ON a.id_estadoActividad = e.id_estadoActividad
+    `, (error, results) => {
         if (error) {
             console.error("Error al obtener las actividades:", error);
             return res.status(500).json({ success: false, message: "Error al obtener las actividades" });
@@ -1681,6 +1814,7 @@ app.get("/api/actividades", (req, res) => {
         res.json({ success: true, actividades: results });
     });
 });
+
 
 // Contar inscripciones para una actividad específica
 app.get("/api/inscripciones/count/actividad/:idActividad", (req, res) => {

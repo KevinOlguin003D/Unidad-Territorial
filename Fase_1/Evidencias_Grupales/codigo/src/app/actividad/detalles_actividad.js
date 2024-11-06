@@ -13,6 +13,19 @@ function cargarDetallesActividad() {
                 document.getElementById("cupoActividad").textContent = data.actividad.cupo;
                 document.getElementById("fechaActividad").textContent = new Date(data.actividad.fecha_actividad).toLocaleString();
                 document.getElementById("ubicacionActividad").textContent = data.actividad.ubicacion;
+                document.getElementById("usuario").textContent = data.actividad.nombreUsuario;
+                const fechaCreacion = new Date(data.actividad.fecha_creacion);
+                const opciones = { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                hour12: false 
+                };
+                const fechaFormateada = fechaCreacion.toLocaleString('es-ES', opciones).replace(',', '');
+                document.getElementById("fechaPublicacion").textContent = fechaFormateada;
+                
             } else {
                 console.error("Error al obtener los detalles de la actividad:", data.message);
             }

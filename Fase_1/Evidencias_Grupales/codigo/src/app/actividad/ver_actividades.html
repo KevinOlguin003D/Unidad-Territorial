@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Actividades Disponibles</title>
-
+    <a href="../index.html" style="text-decoration: none;">
+      <h1 class="title1" style="text-align: center;">Unidad Vecinal</h1>
+    </a>
 </head>
 <style>
     body { 
@@ -22,7 +24,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-gap: 20px;
-  align-items: stretch;
+
   }
 </style>
 <body>
@@ -42,15 +44,15 @@
             </span>
            </div>
        </div>
-    <div class="container-white">
-    <h1>Actividades Disponibles</h1>
     <div>
-        <ul id="listaActividades"></ul>
-    </div>
-
+    <h1 class="titleContent">Actividades disponibles</h1>
+    <a class="button-CrearActividad" href="../actividad/crear_actividad.html">Crear actividad</a>
+    <div id="actividadContainer"></div>
+      
     <script src="ver_actividades.js"></script>
     <script src="../cambio_header.js"></script>
     <link rel="stylesheet" href="../app.component.css">
     <link rel="stylesheet" href="../styles.css">
+    <link rel="stylesheet" href="../actividad/actividad.css">
 </body>
 </html>

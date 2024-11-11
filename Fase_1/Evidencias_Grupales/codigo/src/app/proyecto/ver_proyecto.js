@@ -39,10 +39,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 if (voteData.yaVotado) {
                     btnVotarFavor.disabled = true;
                     btnVotarContra.disabled = true;
+                    btnVotarFavor.classList.add("disabled");
+                    btnVotarContra.classList.add("disabled");
                     mensajeVotacion.innerText = "Ya has votado";
                 } else {
                     btnVotarFavor.disabled = false;
                     btnVotarContra.disabled = false;
+                    btnVotarFavor.classList.remove("disabled");
+                    btnVotarContra.classList.remove("disabled");
                     mensajeVotacion.innerText = "";
 
                     btnVotarFavor.addEventListener("click", () => votar(id_proyecto, id_usuario, 1));

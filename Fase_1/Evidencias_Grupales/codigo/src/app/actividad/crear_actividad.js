@@ -3,7 +3,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const responseMessage = document.getElementById("responseMessage");
     const sessionData = await fetch("/api/session").then(res => res.json());
     const id_usuario = sessionData.id_usuario;
-
+    const fechaFormateadaInput = document.getElementById("fecha_actividad");
+    if (fechaFormateadaInput) {
+        const fechaActual = new Date();
+        const fechaFormateadaInputValue = fechaActual.toISOString().slice(0, 16);
+        fechaFormateadaInput.setAttribute("min", fechaFormateadaInputValue);
+    }
     actividadForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
@@ -12,16 +17,27 @@ document.addEventListener("DOMContentLoaded", async () => {
         const descripcion_actividad = document.getElementById("descripcion_actividad").value;
         const cupo = document.getElementById("cupo").value;
         const fecha_actividad = document.getElementById("fecha_actividad").value;
-        const fechaFormateada = new Date(fecha_actividad).toISOString().slice(0, 19).replace("T", " ");
-
         const ubicacion = document.getElementById("ubicacion").value;
+
+        // Convertir fecha a formato MySQL
+        const fechaFormateada = new Date(fecha_actividad).toLocaleString('en-CA', {
+            timeZone: 'America/Santiago',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: false
+        }).replace(',', '').replace(/\/|\s/g, '-');
+
 
         // Crear el objeto de datos
         const actividadData = {
             nombre_actividad,
             descripcion_actividad,
             cupo,
-            fechaFormateada,
+            fecha_actividad: fechaFormateada,
             ubicacion,
             id_usuario
         };

@@ -2,6 +2,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const usuariosTable = document.getElementById('usuariosTable').getElementsByTagName('tbody')[0];
     const rolesMap = {};
     const estadosMap = {};
+    function notificacionTexto(valor) {
+        return valor === 1 ? 'Sí' : (valor === 0 ? 'No' : 'Valor desconocido');
+    }
+    function formatearFechaNacimiento(fecha) {
+        const opciones = { day: '2-digit', month: '2-digit', year: 'numeric' };
+        return new Date(fecha).toLocaleDateString('es-ES', opciones);
+    }
+    function formatearFechaRegistro(fecha) {
+        const opcionesFecha = { day: '2-digit', month: '2-digit', year: 'numeric' };
+        const opcionesHora = { hour: '2-digit', minute: '2-digit', hour12: false };
+        
+        const fechaFormateada = new Date(fecha).toLocaleDateString('es-ES', opcionesFecha);
+        const horaFormateada = new Date(fecha).toLocaleTimeString('es-ES', opcionesHora);
+        
+        return `${fechaFormateada} ${horaFormateada}`;
+    }
+    
+    
     // Verifica el rol del usuario al cargar la página
     try {
         const response = await fetch('/api/session');
@@ -29,18 +47,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             const response = await fetch('/api/usuarios');
             const usuarios = await response.json();
             usuariosTable.innerHTML = '';
-
             usuarios.forEach(usuario => {
                 const row = usuariosTable.insertRow();
+                const recibeNotificacion = notificacionTexto(usuario.recibe_notificacion)
+                const fechaNacimiento = formatearFechaNacimiento(usuario.fecha_nacimiento);
+                const fechaRegistro = formatearFechaRegistro(usuario.fecha_registro);
                 row.insertCell(0).textContent = usuario.rut;
-                row.insertCell(1).textContent = usuario.primer_nombre;
-                row.insertCell(2).textContent = usuario.segundo_nombre;
-                row.insertCell(3).textContent = usuario.apellido_paterno;
-                row.insertCell(4).textContent = usuario.apellido_materno;
-                row.insertCell(5).textContent = usuario.correo;
-                row.insertCell(6).textContent = usuario.telefono;
+                row.insertCell(1).textContent = usuario.nombre_completo;
+                row.insertCell(2).textContent = usuario.correo;
+                row.insertCell(3).textContent = recibeNotificacion;
+                row.insertCell(4).textContent = usuario.telefono;
+                row.insertCell(5).textContent = usuario.direccion;
+                row.insertCell(6).textContent = fechaNacimiento;
+                row.insertCell(7).textContent = fechaRegistro;
+                
 
-                const rolCell = row.insertCell(7);
+
+                const rolCell = row.insertCell(8);
                 const rolSelect = document.createElement('select');
                 rolSelect.id = `rolSelect_${usuario.rut}`;
 
@@ -54,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 rolSelect.value = usuario.id_rol; 
                 rolCell.appendChild(rolSelect);
 
-                const estadoCell = row.insertCell(8);
+                const estadoCell = row.insertCell(9);
                 const estadoSelect = document.createElement('select');
                 estadoSelect.id = `estadoSelect_${usuario.rut}`;
 
@@ -68,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 estadoSelect.value = usuario.id_estadousuario;
                 estadoCell.appendChild(estadoSelect);
 
-                const actionsCell = row.insertCell(9);
+                const actionsCell = row.insertCell(10);
                 const submitButton = document.createElement('button');
                 submitButton.textContent = 'Actualizar';
                 submitButton.onclick = () => submitChanges(usuario.rut);

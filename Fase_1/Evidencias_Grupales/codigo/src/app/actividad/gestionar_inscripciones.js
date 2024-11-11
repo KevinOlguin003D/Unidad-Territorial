@@ -32,7 +32,7 @@ $(document).ready(function() {
                             <td>${fechaActividadFormateada}</td>
                             <td>${inscripcion.ubicacion}</td>
                             <td>${fechaInscripcionFormateada}</td>
-                            <td>${inscripcion.id_estadoInscripcion}</td>
+                            <td>${inscripcion.estado_inscripcion}</td>
                             <td>
                                 <button class="cancelarInscripcion" data-id="${inscripcion.id_inscripcion}" ${inscripcion.id_estadoInscripcion === 2 ? 'disabled' : ''}>Cancelar</button>
                             </td>
@@ -108,7 +108,7 @@ $(document).ready(function() {
                     <td>${fechaActividadFormateada}</td>
                     <td>${inscripcion.ubicacion}</td>
                     <td>${fechaInscripcionFormateada}</td>
-                    <td>${inscripcion.id_estadoInscripcion}</td>
+                    <td>${inscripcion.estado_inscripcion}</td>
                     <td>${inscripcion.motivoCancelacion || 'N/A'}</td>
                 </tr>`;
                 $historialTbody.append(row);

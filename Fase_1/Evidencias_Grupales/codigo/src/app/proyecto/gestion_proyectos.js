@@ -17,11 +17,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const fila = document.createElement('tr');
 
                     fila.innerHTML = `
-                        <td>${proyecto.id_proyecto}</td>
-                        <td>${proyecto.nombre_proyecto}</td>
-                        <td class="limited-text">${proyecto.descripcion_proyecto}</td>
+                        <td class="cell">${proyecto.id_proyecto}</td>
+                        <td class="cell1">${proyecto.nombre_proyecto}</td>
+                        <td class="cell1 limited-text">${proyecto.descripcion_proyecto}</td>
                         <td>
-                            <button class="ver-detalles" data-id-proyecto="${proyecto.id_proyecto}">
+                            <button class="buttonDetalles" data-id-proyecto="${proyecto.id_proyecto}">
                                 Ver detalles
                             </button>
                         </td>
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 // Añadir eventos a los botones para ver detalles del proyecto
-                document.querySelectorAll('.ver-detalles').forEach(button => {
+                document.querySelectorAll('.buttonDetalles').forEach(button => {
                     button.addEventListener('click', (event) => {
                         const id_proyecto = event.target.dataset.idProyecto;
                         window.location.href = `../proyecto/ver_proyecto.html?id=${id_proyecto}`;

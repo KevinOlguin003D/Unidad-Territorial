@@ -52,8 +52,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // Cargar los detalles de la noticia
     cargarDetalleNoticia(id_noticia);
 
-    // Evento para volver a la lista de noticias
-    document.getElementById('volver').addEventListener('click', () => {
-        window.location.href = 'noticia.html';
-    });
 });

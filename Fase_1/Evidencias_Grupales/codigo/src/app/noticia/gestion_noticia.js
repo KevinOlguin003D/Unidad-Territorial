@@ -85,11 +85,20 @@ function loadNoticias() {
         data.forEach(noticia => {
             const row = document.createElement("tr");
             row.innerHTML = `
-                <td>${noticia.titulo}</td>
-                <td>${noticia.contenido}</td>
-                <td>${new Date(noticia.fecha_publicacion).toLocaleDateString()}</td>
-                <td>${noticia.editor}</td>
-                <td><button onclick="openImage('${noticia.id_imagen}')">Ver Imagen</button></td>
+                <td class="cell2">${noticia.titulo}</td>
+                <td class="cell1">${noticia.contenido}</td>
+                <td class="cell2">${new Date(noticia.fecha_publicacion).toLocaleString('es-CL', {
+                    weekday: 'long', // Día de la semana
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit', 
+                    second: '2-digit', 
+                    hour12: false // Si quieres el formato de 24 horas
+                })}</td>
+                <td class="cell3">${noticia.editor}</td>
+                <td><button class="button-noticia" onclick="openImage('${noticia.id_imagen}')">Ver Imagen</button></td>
             `;
             tbody.appendChild(row);
         });
@@ -98,6 +107,7 @@ function loadNoticias() {
         console.error("Error al cargar las noticias:", error);
     });
 }
+
 
 // Función para abrir la imagen en una nueva pestaña
 function openImage(id_imagen) {

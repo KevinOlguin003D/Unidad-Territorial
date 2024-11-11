@@ -8,6 +8,15 @@
     margin: auto;
     padding-top: 1px;
   }
+  .container-white1 {
+    background-color: rgba(255, 255, 255, 0.93);
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    max-width: 70%;
+    margin: auto;
+    padding-top: 1px;
+  }
   
   .title1{
     font-size: 30px;
@@ -52,4 +61,19 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   -webkit-line-clamp: 5; 
+}
+.limited-text-actividad /* Aplicar cuando las descripciones son muy largas */
+{
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  -webkit-line-clamp: 5; 
+  height: 90px;
+  margin-bottom: 10px;
+}
+
+.titleContent /* es el titulo que va dentro de los "div" */
+{
+  color: #000000;
+  text-align: center;
 }

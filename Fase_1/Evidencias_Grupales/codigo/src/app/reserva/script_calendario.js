@@ -69,7 +69,7 @@ $(document).ready(function() {
         });
     }
 
-    cargarHorariosIniciales(); // Llama a la función al cargar la página
+    cargarHorariosIniciales();
 
     $('#reservarBtn').on('click', function(event) {
         event.preventDefault();
@@ -81,7 +81,7 @@ $(document).ready(function() {
                 const idDisponibilidad = selectedOption.val();
                 const idRecurso = $('#idRecurso').val();
                 const idMotivo = $('#motivoDropdown').val();
-                const idUsuario = response.userId; // Obtén el ID del usuario desde la respuesta
+                const idUsuario = response.userId;
                 const id_estado_reserva = 1;
     
                 if (!idDisponibilidad || idDisponibilidad == 2 || idDisponibilidad == 3) {
@@ -109,7 +109,7 @@ $(document).ready(function() {
                     data: JSON.stringify({
                         fecha_reserva: fechaReserva,
                         id_recurso: idRecurso,
-                        id_usuario: idUsuario, // Usa el ID del usuario de la sesión
+                        id_usuario: idUsuario,
                         hora_inicio: horaInicio,
                         hora_fin: horaFin,
                         id_motivo: idMotivo,

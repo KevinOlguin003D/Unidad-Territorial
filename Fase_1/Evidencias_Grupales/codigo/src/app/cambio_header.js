@@ -24,7 +24,8 @@ async function agregarEnlacesAlMenu() {
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="">Miembros</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../profile/perfil_usuario.html">Perfil</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../actividad/ver_actividades.html">Actividades</a>
-        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="">Ayuda</a>
+        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../proyecto/home_proyecto.html">Proyectos</a>
+        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../ayuda/ayuda.html">Ayuda</a>
     `;
 
     // Verificar autenticación del usuario

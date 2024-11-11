@@ -3,7 +3,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     const responseMessage = document.getElementById("responseMessage");
     const sessionData = await fetch("/api/session").then(res => res.json());
     const id_usuario = sessionData.id_usuario;
-
+    const fechaFormateadaInput = document.getElementById("fecha_actividad");
+    if (fechaFormateadaInput) {
+        const fechaActual = new Date();
+        const fechaFormateadaInputValue = fechaActual.toISOString().slice(0, 16);
+        fechaFormateadaInput.setAttribute("min", fechaFormateadaInputValue);
+    }
     // Cargar los estados de actividad para el dropdown
     const estadosResponse = await fetch("/api/estadosActividad");
     const estadosData = await estadosResponse.json();
@@ -73,9 +78,17 @@ document.addEventListener("DOMContentLoaded", async () => {
             data.actividades.forEach(actividad => {
                 const row = actividadesTable.insertRow();
 
-                // Formatear la fecha de creación
+                // Formatear la fechas
                 const fechaCreacion = new Date(actividad.fecha_creacion).toLocaleString();
-
+                function formatFecha(fecha) {
+                    const f = new Date(fecha);
+                    const year = f.getFullYear();
+                    const month = String(f.getMonth() + 1).padStart(2, '0');
+                    const day = String(f.getDate()).padStart(2, '0');
+                    const hour = String(f.getHours()).padStart(2, '0');
+                    const minute = String(f.getMinutes()).padStart(2, '0');
+                    return `${year}-${month}-${day}T${hour}:${minute}`;
+                }
                 // Crear el dropdown con los estados disponibles
                 const dropdownOptions = estados.map(estado => {
                     const selected = actividad.id_estadoActividad === estado.id_estadoActividad ? 'selected' : '';
@@ -87,15 +100,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                     <td contenteditable="true">${actividad.nombre_actividad}</td>
                     <td contenteditable="true">${actividad.descripcion_actividad}</td>
                     <td contenteditable="true">${actividad.cupo}</td>
-                    <td contenteditable="true"><input type="datetime-local" id="fecha_actividad" name="fecha_actividad" value="${new Date(actividad.fecha_actividad).toISOString().slice(0, 16)}"/></td>
+                    <td contenteditable="true"><input type="datetime-local" id="fecha_actividad" name="fecha_actividad" min="" value="${formatFecha(actividad.fecha_actividad)}"/></td>
                     <td contenteditable="true">${actividad.ubicacion}</td>
                     <td>${actividad.nombreUsuario}</td>
                     <td>${fechaCreacion}</td>
-                    <td>
-                        <select class="dropdown">
-                            ${dropdownOptions}
-                        </select>
-                    </td>
+                    <td><select class="dropdown">${dropdownOptions}</select></td>
                     <td id="motivoCell"></td>
                     <td><button class="updateButton">Actualizar</button></td>
                 `;

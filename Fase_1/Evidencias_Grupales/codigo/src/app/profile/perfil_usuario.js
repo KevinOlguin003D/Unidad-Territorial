@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar información del usuario
             const fullName = `${data.primer_nombre} ${data.segundo_nombre || ''} ${data.apellido_paterno} ${data.apellido_materno || ''}`;
             document.getElementById('fullName').textContent = fullName;
-            document.getElementById('role').textContent = data.role;
+            document.getElementById('role').textContent = data.descripcion_rol;
             document.getElementById('address').textContent = data.direccion;
             document.getElementById('email').textContent = data.correo;
             document.getElementById('phone').textContent = data.telefono;

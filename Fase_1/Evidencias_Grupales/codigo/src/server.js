@@ -41,6 +41,10 @@ const PDFDocument = require('pdfkit');
 app.use(express.static(path.join(__dirname, 'app')));
 app.use(express.json());
 
+// Función para obtener la fecha y hora en Chile
+const getChileDateTime = () => {
+    return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
+};
 // Ruta principal
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'app', 'index.html'));
@@ -91,19 +95,20 @@ app.post('/api/actualizar-disponibilidad', (req, res) => {
 // Endpoint para realizar una reserva 
 app.post('/api/reservar', (req, res) => {
     const { fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, id_estado_reserva } = req.body;
+    const fecha_creacion = getChileDateTime(); 
     console.log('Datos recibidos para la reserva:', req.body);
 
     const query = `
         INSERT INTO reserva (fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, fecha_creacion, id_estado_reserva) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    connection.query(query, [fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, id_estado_reserva], (error, results) => {
+    connection.query(query, [fecha_reserva, id_recurso, id_usuario, hora_inicio, hora_fin, id_motivo, fecha_creacion, id_estado_reserva], (error, results) => {
         if (error) {
             console.error('Error al realizar la reserva:', error);
             return res.status(500).json({ error: 'Error al realizar la reserva: ' + error.message });
         }
-        const fecha_creacion = new Date(); 
+        
 
         // Obtener el correo del usuario y la descripción del recurso
         const sqlGetUserAndResource = `
@@ -148,7 +153,7 @@ app.post('/api/reservar', (req, res) => {
                             <li><strong>Motivo:</strong> ${descripcion_motivo}</li>
                             <li><strong>Hora de inicio:</strong> ${hora_inicio}</li>
                             <li><strong>Hora de fin:</strong> ${hora_fin}</li>
-                            <li><strong>Fecha de creación:</strong> ${fecha_creacion.toLocaleString('es-ES')}</li> <!-- Fecha de creación -->
+                            <li><strong>Fecha de creación:</strong> ${fecha_creacion.toLocaleString('es-ES')}</li>
                         </ul>
                         <p>Gracias por utilizar nuestro sistema.</p>
                     `,
@@ -219,10 +224,12 @@ app.get('/api/obtenerReservasUsuario/:idUsuario', (req, res) => {
                r.hora_fin, 
                m.desc_motivo, 
                r.fecha_creacion, 
-               r.id_estado_reserva
+               r.id_estado_reserva,
+               er.desc_estado_reserva
         FROM reserva r
         JOIN motivo m ON r.id_motivo = m.id_motivo
         JOIN recurso rc ON r.id_recurso = rc.id_recurso
+        JOIN estado_reserva er ON r.id_estado_reserva = er.id_estado_reserva
         WHERE r.id_usuario = ?;
     `;
     
@@ -238,13 +245,14 @@ app.get('/api/obtenerReservasUsuario/:idUsuario', (req, res) => {
 app.put('/api/cancelarReserva/:idReserva', (req, res) => {
     const { idReserva } = req.params;
     const { motivoCancelacion } = req.body;
+    const fecha_cancelacion = getChileDateTime(); 
     // Actualizar la reserva y registrar la fecha de cancelación
     const queryCancel = `
         UPDATE reserva
-        SET id_estado_reserva = 2, fecha_cancelacion = NOW() 
+        SET id_estado_reserva = 2, fecha_cancelacion = ?
         WHERE id_reserva = ? AND id_estado_reserva = 1
     `;
-
+    const params = [fecha_cancelacion, idReserva];
     // Consultar la información de la reserva, el recurso y el motivo antes de la cancelación
     const queryInfo = `
         SELECT r.fecha_reserva, r.hora_inicio, r.hora_fin, recurso.descripcion_recurso, usuario.correo, r.id_motivo 
@@ -274,7 +282,7 @@ app.put('/api/cancelarReserva/:idReserva', (req, res) => {
             const formattedFechaReserva = new Date(fecha_reserva).toISOString().split('T')[0];
             const fechaFormateada = formatDate(formattedFechaReserva);
 
-            connection.query(queryCancel, [idReserva], (error, results) => {
+            connection.query(queryCancel, params, (error, results) => {
                 if (error) {
                     console.error('Error al cancelar la reserva:', error);
                     return res.status(500).json({ error: 'Error al cancelar la reserva' });
@@ -296,10 +304,10 @@ app.put('/api/cancelarReserva/:idReserva', (req, res) => {
                             <li><strong>Recurso:</strong> ${descripcion_recurso}</li>
                             <li><strong>Fecha de la reserva:</strong> ${fechaFormateada}</li>
                             <li><strong>Motivo:</strong> ${descripcion_motivo}</li>
-                            <li><strong>Motivo de cancelación:</strong> ${motivoCancelacion}</li> <!-- Motivo de cancelación adicional -->
+                            <li><strong>Motivo de cancelación:</strong> ${motivoCancelacion}</li>
                             <li><strong>Hora de inicio:</strong> ${hora_inicio}</li>
                             <li><strong>Hora de fin:</strong> ${hora_fin}</li>
-                            <li><strong>Fecha de cancelación:</strong> ${new Date().toLocaleString('es-ES')}</li> <!-- Fecha de cancelación -->
+                            <li><strong>Fecha de cancelación:</strong> ${new Date().toLocaleString('es-ES')}</li>
                         </ul>
                         <p>Gracias por utilizar nuestro sistema.</p>
                     `,
@@ -353,10 +361,12 @@ app.get('/api/motivos/:idRecurso', (req, res) => {
 // Endpoint para obtener todas las reservas
 app.get('/api/obtenerReservas', (req, res) => {
     const query = `
-        SELECT r.id_reserva, r.fecha_reserva, rc.descripcion_recurso, r.id_usuario, r.hora_inicio, r.hora_fin, m.desc_motivo, r.fecha_creacion, r.id_estado_reserva
+        SELECT r.id_reserva, r.fecha_reserva, rc.descripcion_recurso, r.id_usuario, r.hora_inicio, r.hora_fin, m.desc_motivo, r.fecha_creacion, r.id_estado_reserva,
+        er.desc_estado_reserva
         FROM reserva r
         JOIN motivo m ON r.id_motivo = m.id_motivo
-        JOIN recurso rc ON r.id_recurso = rc.id_recurso;
+        JOIN recurso rc ON r.id_recurso = rc.id_recurso
+        JOIN estado_reserva er ON r.id_estado_reserva = er.id_estado_reserva;
 
 
     `;
@@ -388,7 +398,8 @@ app.post('/register', (req, res) => {
     if (!rutFormateado) {
         return res.status(400).json({ error: 'RUT no válido' });
     }
-
+    // fecha registro
+    const fecha_registro = getChileDateTime();
     // Verificar si ya existe un usuario con el mismo rut, correo o telefono
     const query = `
         SELECT * FROM usuario 
@@ -413,18 +424,32 @@ app.post('/register', (req, res) => {
                 message: `El ${existingAttributes.join(", ")} ya está asociado a una cuenta.`
             });
         }
-
+         
         const id_estadousuario = 1;
         const id_rol = 5; // rol por defecto
-        const insertQuery = `INSERT INTO usuario (rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, password, fecha_nacimiento, id_rol, id_estadousuario, recibe_notificacion) 
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        const insertQuery = `INSERT INTO usuario (rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, correo, telefono, direccion, password, fecha_nacimiento, id_rol, id_estadousuario, recibe_notificacion, fecha_registro) 
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
-        connection.query(insertQuery, [rutFormateado, primerNombre, segundoNombre || '', apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento, id_rol, id_estadousuario, recibirNotificaciones], (err, result) => {
+        connection.query(insertQuery, [rutFormateado, primerNombre, segundoNombre || '', apellidoPaterno, apellidoMaterno, correo, telefono, direccion, password, fechaNacimiento, id_rol, id_estadousuario, recibirNotificaciones, fecha_registro], (err, result) => {
             if (err) {
                 console.error('Error ejecutando la consulta SQL:', err);
                 return res.status(500).json({ message: 'Error al registrar el usuario' });
             }
+             // Enviar el correo de confirmación
+             const mailOptions = {
+                from: 'sistemaunidadterritorial@gmail.com',
+                to: correo,
+                subject: 'Confirmación de Registro',
+                text: `Hola ${primerNombre},\n\nTu registro ha sido exitoso. Bienvenido a nuestro sistema.\n\nSaludos cordiales,\nEl equipo de Sistema Unidad Territorial.`,
+            };
 
+            transporter.sendMail(mailOptions, (error, info) => {
+                if (error) {
+                    console.error('Error enviando el correo:', error);
+                    return res.status(500).json({ message: 'Registro exitoso, pero no se pudo enviar el correo de confirmación.' });
+                }
+                console.log('Correo enviado: ' + info.response);
+            });
             res.status(201).json({ message: 'Registro exitoso' }); 
         });
     });
@@ -435,8 +460,10 @@ app.post('/register', (req, res) => {
 // Endpoint para obtener todos los usuarios
 app.get('/api/usuarios', (req, res) => {
     const sql = `
-        SELECT u.rut, u.primer_nombre, u.segundo_nombre, u.apellido_paterno, u.apellido_materno, 
-               u.correo, u.telefono, u.id_rol, u.id_estadousuario,
+        SELECT 
+        CONCAT(u.primer_nombre, ' ', u.segundo_nombre, ' ', u.apellido_paterno, ' ',u.apellido_materno) AS nombre_completo,
+        u.rut, u.primer_nombre, u.segundo_nombre, u.apellido_paterno, u.apellido_materno, 
+               u.correo, u.telefono, u.id_rol, u.id_estadousuario, u.direccion, u.recibe_notificacion, u.fecha_nacimiento, u.fecha_registro,
                r.descripcion_rol, e.desc_estadousuario
         FROM usuario u
         JOIN rol r ON u.id_rol = r.id_rol
@@ -588,33 +615,52 @@ app.post('/login', (req, res) => {
         
         if (results.length > 0) {
             const usuario = results[0];
-
+            const obtenerDescripcionRol = (id_rol) => {
+                const query = 'SELECT descripcion_rol FROM rol WHERE id_rol = ?';
+                return new Promise((resolve, reject) => {
+                    connection.query(query, [id_rol], (err, rows) => {
+                        if (err) {
+                            console.error('Error al obtener la descripción del rol:', err);
+                            return reject(err);
+                        }
+                        resolve(rows.length > 0 ? rows[0].descripcion_rol : null);
+                    });
+                });
+            };
             if (usuario.password === password) {
-                req.session.user = {
-                    id_usuario: usuario.id_usuario,
-                    primer_nombre: usuario.primer_nombre,
-                    segundo_nombre: usuario.segundo_nombre,
-                    apellido_paterno: usuario.apellido_paterno,
-                    apellido_materno: usuario.apellido_materno,
-                    correo: usuario.correo,
-                    telefono: usuario.telefono,
-                    direccion: usuario.direccion,
-                    rut: usuario.rut,
-                    fecha_nacimiento: usuario.fecha_nacimiento,
-                    role: usuario.id_rol,
-                    recibirNotificaciones: usuario.recibe_notificacion,
-                    visits: (req.session.user?.visits || 0) + 1,
-                    lastLogin: new Date().toISOString()
-                };
+                obtenerDescripcionRol(usuario.id_rol)
+                    .then((descripcionRol) => {
+                        req.session.user = {
+                            id_usuario: usuario.id_usuario,
+                            primer_nombre: usuario.primer_nombre,
+                            segundo_nombre: usuario.segundo_nombre,
+                            apellido_paterno: usuario.apellido_paterno,
+                            apellido_materno: usuario.apellido_materno,
+                            correo: usuario.correo,
+                            telefono: usuario.telefono,
+                            direccion: usuario.direccion,
+                            rut: usuario.rut,
+                            fecha_nacimiento: usuario.fecha_nacimiento,
+                            role: usuario.id_rol,
+                            descripcion_rol: descripcionRol,
+                            recibirNotificaciones: usuario.recibe_notificacion,
+                            visits: (req.session.user?.visits || 0) + 1,
+                            lastLogin: new Date().toISOString()
+                        };
 
-                console.log('Usuario guardado en la sesión:', req.session.user);
+                        console.log('Usuario guardado en la sesión:', req.session.user);
 
-                // Redirigir según el id_rol
-                if ([1, 2, 3, 4, 6].includes(usuario.id_rol)) {
-                    return res.status(200).json({ message: 'Inicio de sesión exitoso', redirect: '/index_directiva.html' });
-                } else if (usuario.id_rol === 5) {
-                    return res.status(200).json({ message: 'Inicio de sesión exitoso', redirect: '/index.html' });
-                }
+                        // Redirigir según el id_rol
+                        if ([1, 2, 3, 4, 6].includes(usuario.id_rol)) {
+                            return res.status(200).json({ message: 'Inicio de sesión exitoso', redirect: '/index_directiva.html' });
+                        } else if (usuario.id_rol === 5) {
+                            return res.status(200).json({ message: 'Inicio de sesión exitoso', redirect: '/index.html' });
+                        }
+                    })
+                    .catch((error) => {
+                        console.error('Error durante el proceso de inicio de sesión:', error);
+                        return res.status(500).json({ message: 'Error interno en el servidor' });
+                    });
             } else {
                 return res.status(401).json({ message: 'Correo o contraseña incorrectos' });
             }
@@ -635,6 +681,7 @@ app.get('/api/session', (req, res) => {
             apellido_materno: req.session.user.apellido_materno,
             correo: req.session.user.correo,
             role: req.session.user.role,
+            descripcion_rol: req.session.user.descripcion_rol,
             direccion: req.session.user.direccion,
             telefono: req.session.user.telefono,
             rut: req.session.user.rut,
@@ -745,14 +792,6 @@ function formatearRUT(rut) {
     const rutFormateado = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + dv;
     return rutFormateado;
 }
-
-
-
-
-// Función para obtener la fecha y hora en Chile
-const getChileDateTime = () => {
-    return new Date(new Date().toLocaleString("en-US", { timeZone: "America/Santiago" }));
-};
 
 app.post("/api/generarCertificado", (req, res) => {
     const { rut, nombre, domicilio, motivo, correo } = req.body;
@@ -1544,7 +1583,7 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
 
 // Crear actividad
 app.post("/api/crearActividad", (req, res) => {
-    const { nombre_actividad, descripcion_actividad, cupo, fechaFormateada, ubicacion, id_usuario } = req.body;
+    const { nombre_actividad, descripcion_actividad, cupo, ubicacion, id_usuario, fecha_actividad } = req.body;
     const fecha_creacion = new Date();
 
     // Query para insertar la actividad
@@ -1553,7 +1592,7 @@ app.post("/api/crearActividad", (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fechaFormateada, ubicacion, id_usuario, fecha_creacion], (error, result) => {
+    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, fecha_creacion], (error, result) => {
         if (error) {
             console.error("Error al crear la actividad:", error);
             return res.status(500).json({ success: false, message: "Error al crear la actividad" });
@@ -1623,7 +1662,7 @@ app.put("/api/modificarActividad", (req, res) => {
         id_estadoActividad, 
         motivo 
     } = req.body;
-    let fechaCancelacion = new Date();
+    let fechaModificacion = new Date();
     id_estadoActividad = parseInt(id_estadoActividad);
     // Query para actualizar la actividad
     const query = `
@@ -1637,10 +1676,10 @@ app.put("/api/modificarActividad", (req, res) => {
             id_usuario = ?, 
             id_estadoActividad = ?,
             motivo = ?,
-            fechaCancelacion = ?
+            fechaModificacion = ?
         WHERE id_actividad = ?
     `;
-    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, id_estadoActividad, motivo, fechaCancelacion, id_actividad], (error, result) => {
+    connection.query(query, [nombre_actividad, descripcion_actividad, cupo, fecha_actividad, ubicacion, id_usuario, id_estadoActividad, motivo, fechaModificacion, id_actividad], (error, result) => {
         if (error) {
             console.error("Error al actualizar la actividad:", error);
             return res.status(500).json({ success: false, message: "Error al actualizar la actividad" });
@@ -1944,9 +1983,11 @@ app.get('/api/obtenerInscripciones', (req, res) => {
             a.ubicacion, 
             a.fecha_creacion, 
             i.id_estadoInscripcion, 
-            i.fecha_inscripcion 
+            i.fecha_inscripcion,
+            ei.estado_inscripcion 
         FROM inscripcion i
         JOIN actividad a ON i.id_actividad = a.id_actividad
+        JOIN estado_inscripcion ei ON i.id_estadoInscripcion = ei.id_estadoInscripcion
         WHERE i.id_estadoInscripcion != 2`;
 
     connection.query(query, (err, results) => {
@@ -2028,9 +2069,11 @@ app.get('/api/historial-inscripciones', (req, res) => {
             a.ubicacion,
             i.fecha_inscripcion,
             i.id_estadoInscripcion,
-            i.motivoCancelacion
+            i.motivoCancelacion,
+            ei.estado_inscripcion
         FROM inscripcion i
-        JOIN actividad a ON i.id_actividad = a.id_actividad`;
+        JOIN actividad a ON i.id_actividad = a.id_actividad
+        JOIN estado_inscripcion ei ON i.id_estadoInscripcion = ei.id_estadoInscripcion`;
 
     connection.query(query, (err, results) => {
         if (err) {

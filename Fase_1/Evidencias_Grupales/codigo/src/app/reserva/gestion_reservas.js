@@ -64,7 +64,7 @@ $(document).ready(async function() {
                         <td>${reserva.hora_fin}</td>
                         <td>${reserva.desc_motivo || 'N/A'}</td>
                         <td>${fechaCreacion}</td>
-                        <td>${reserva.id_estado_reserva}</td>
+                        <td>${reserva.desc_estado_reserva}</td>
                         <td>
                             <button class="cancelarReserva" data-id="${reserva.id_reserva}" ${sePuedeCancelar ? '' : 'disabled'}>Cancelar</button>
                         </td>

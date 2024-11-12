@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async function() {
 
         const sessionData = await response.json();
         console.log('Rol del usuario:', sessionData.role);
-        const allowedRoles = [1, 2, 4, 6];
+        const allowedRoles = [1, 2, 3, 4, 6];
         if (!allowedRoles.includes(sessionData.role)) {
             alert('Acceso denegado');
             window.location.href = '/login/login_component.html';

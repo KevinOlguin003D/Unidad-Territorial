@@ -21,13 +21,23 @@ const transporter = nodemailer.createTransport({
 function formatDate(dateString) {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     
-    // ajustar a UTC-3 (Chile)
-    const date = new Date(dateString + 'T00:00:00');
-    const offset = -3 * 60;
-    const localDate = new Date(date.getTime() + (date.getTimezoneOffset() * 60 * 1000) + (offset * 60 * 1000));
+    // Detectar si `dateString` contiene la hora
+    const [datePart, timePart] = dateString.split(' ');
+    const [year, month, day] = datePart.split('-').map(Number);
+    let hour = 0, minute = 0;
+
+    // Si `timePart` está definido, desglosamos la hora y el minuto
+    if (timePart) {
+        [hour, minute] = timePart.split('-').map(Number);
+    }
     
-    return localDate.toLocaleDateString('es-ES', options);
+    // Crear la fecha directamente sin ajuste de zona horaria
+    const date = new Date(year, month - 1, day, hour, minute);
+    
+    return date.toLocaleDateString('es-ES', options);
 }
+
+
 
 const corsOptions = {
     credentials: true, // Permite el intercambio de cookies y credenciales
@@ -299,7 +309,7 @@ app.put('/api/cancelarReserva/:idReserva', (req, res) => {
                     subject: 'Reserva cancelada',
                     html: `
                         <h1>Reserva cancelada</h1>
-                        <p>Su reserva ha sido cancelada con éxito. Aquí están los detalles:</p>
+                        <p>Su reserva ha sido cancelada. Aquí están los detalles:</p>
                         <ul>
                             <li><strong>Recurso:</strong> ${descripcion_recurso}</li>
                             <li><strong>Fecha de la reserva:</strong> ${fechaFormateada}</li>
@@ -1255,7 +1265,7 @@ app.post('/api/postular_proyecto', upload.single('imagen'), (req, res) => {
                         from: 'sistemaunidadterritorial@gmail.com',
                         to: req.session.user.correo,
                         subject: 'Confirmación de Postulación de Proyecto',
-                        text: `Su proyecto ha sido postulada exitosamente.\n\nDetalles de la postulación:\n- Nombre del Proyecto: ${nombre}\n- Ubicación: ${ubicacion}\n- Presupuesto estimado: ${presupuesto_estimado}\n- Duración (en semanas): ${duracion}\n- Objetivo del proyecto: ${objetivo}\n- Descripción: ${descripcion}\n- Fecha y hora de postulación: ${fecha_postulacion.toLocaleString()}\n\n¡Gracias por su participación!`,
+                        text: `Su proyecto ha sido postulado exitosamente.\n\nDetalles de la postulación:\n- Nombre del Proyecto: ${nombre}\n- Ubicación: ${ubicacion}\n- Presupuesto estimado: ${presupuesto_estimado}\n- Duración (en semanas): ${duracion}\n- Objetivo del proyecto: ${objetivo}\n- Descripción: ${descripcion}\n- Fecha y hora de postulación: ${fecha_postulacion.toLocaleString()}\n\n¡Gracias por su participación!`,
                     };
 
                     transporter.sendMail(mailOptions, (error, info) => {
@@ -1476,107 +1486,107 @@ app.post("/api/cambiarEstadoProyecto", (req, res) => {
                 );
             }
 
-            // Obtener el correo del postulante
+            // Obtener el correo y el nombre del proyecto
             connection.query(
-                "SELECT correo FROM usuario WHERE id_usuario = (SELECT id_usuario FROM proyecto WHERE id_proyecto = ?)",
+                "SELECT u.correo, p.nombre_proyecto FROM usuario u JOIN proyecto p ON u.id_usuario = p.id_usuario WHERE p.id_proyecto = ?",
                 [proyectoInt],
                 (error, results) => {
                     if (error || results.length === 0) {
-                        console.error("Error al obtener el correo del postulante:", error);
-                        return res.status(500).json({ success: false, message: "Error al obtener el correo del postulante" });
+                        console.error("Error al obtener el correo o nombre del proyecto:", error);
+                        return res.status(500).json({ success: false, message: "Error al obtener el correo o nombre del proyecto" });
                     }
 
-                    const correoPostulante = results[0].correo;
-                    let mailOptions = {};
-                    let correoUsuarios = [];
+                const correoPostulante = results[0].correo;
+                const nombreProyecto = results[0].nombre_proyecto;
+                let mailOptions = {};
+                let correoUsuarios = [];
 
-                    if (estadoProyectoInt === 4) {
-                        // Configuración del correo para aprobación
-                        mailOptions = {
+                if (estadoProyectoInt === 4) {
+                // Configuración del correo para aprobación
+                    mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: correoPostulante,
+                        subject: 'Confirmación de Aprobación de Proyecto',
+                        text: `Su proyecto "${nombreProyecto}" ha sido aprobado.\n\n- Fecha y hora de la aprobación: ${new Date().toLocaleString()}\n\n¡Gracias por su participación!`,
+                    };
+
+                    // Obtener correos de usuarios con roles 1, 2, 3, 4, 6 (directiva y developer)
+                    connection.query(
+                        "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
+                        (error, roleResults) => {
+                        if (error) {
+                            console.error("Error al obtener correos de usuarios:", error);
+                            return res.status(500).json({ success: false, message: "Error al obtener correos de usuarios" });
+                        }
+                        correoUsuarios = roleResults.map(user => user.correo).join(",");
+
+                        // Enviar correo a todos los usuarios con los roles especificados
+                        const mailOptionsRoles = {
                             from: 'sistemaunidadterritorial@gmail.com',
-                            to: correoPostulante,
-                            subject: 'Confirmación de Aprobación de Proyecto',
-                            text: `Su proyecto ha sido aprobado.\n\nDetalles:\n- Fecha y hora de la aprobación: ${new Date().toLocaleString()}\n\n¡Gracias por su participación!`,
+                            to: correoUsuarios,
+                            subject: 'Aprobación de Proyecto',
+                            text: `El proyecto "${nombreProyecto}" ha sido aprobado.\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
                         };
 
-                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6 (directiva y developer)
-                        connection.query(
-                            "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
-                            (error, roleResults) => {
-                                if (error) {
-                                    console.error("Error al obtener correos de usuarios:", error);
-                                    return res.status(500).json({ success: false, message: "Error al obtener correos de usuarios" });
-                                }
-                                correoUsuarios = roleResults.map(user => user.correo).join(",");
-
-                                // Enviar correo a todos los usuarios con los roles especificados (directiva y developer)
-                                const mailOptionsRoles = {
-                                    from: 'sistemaunidadterritorial@gmail.com',
-                                    to: correoUsuarios,
-                                    subject: 'Aprobación de Proyecto',
-                                    text: `El proyecto con ID: ${proyectoInt} ha sido aprobado.\n\n¡Gracias!`,
-                                };
-
-                                // Enviar correos
-                                transporter.sendMail(mailOptions, (error) => {
-                                    if (error) {
-                                        console.error("Error al enviar el correo al postulante:", error);
-                                    }
-                                });
-                                
-                                transporter.sendMail(mailOptionsRoles, (error) => {
-                                    if (error) {
-                                        console.error("Error al enviar correos a los usuarios:", error);
-                                    }
-                                });
+                        // Enviar correos
+                        transporter.sendMail(mailOptions, (error) => {
+                            if (error) {
+                                console.error("Error al enviar el correo al postulante:", error);
                             }
-                        );
-                    } else if (estadoProyectoInt === 5) {
-                        // Configuración del correo para rechazo
-                        mailOptions = {
-                            from: 'sistemaunidadterritorial@gmail.com',
-                            to: correoPostulante,
-                            subject: 'Notificación de Rechazo de Proyecto',
-                            text: `Su proyecto ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
-                        };
+                        });
 
-                        // Obtener correos de usuarios con roles 1, 2, 3, 4, 6 (directiva y developer)
-                        connection.query(
-                            "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
-                            (error, roleResults) => {
-                                if (error) {
-                                    console.error("Error al obtener correos de usuarios:", error);
-                                    return res.status(500).json({ success: false, message: "Error al obtener correos de usuarios" });
-                                }
-                                correoUsuarios = roleResults.map(user => user.correo).join(",");
-
-                                // Enviar correo a todos los usuarios con los roles especificados
-                                const mailOptionsRoles = {
-                                    from: 'sistemaunidadterritorial@gmail.com',
-                                    to: correoUsuarios,
-                                    subject: 'Rechazo de Proyecto',
-                                    text: `El proyecto con ID: ${proyectoInt} ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
-                                };
-
-                                // Enviar correos
-                                transporter.sendMail(mailOptions, (error) => {
-                                    if (error) {
-                                        console.error("Error al enviar el correo al postulante:", error);
-                                    }
-                                });
-
-                                transporter.sendMail(mailOptionsRoles, (error) => {
-                                    if (error) {
-                                        console.error("Error al enviar correos a los usuarios:", error);
-                                    }
-                                });
+                        transporter.sendMail(mailOptionsRoles, (error) => {
+                            if (error) {
+                                console.error("Error al enviar correos a los usuarios:", error);
                             }
-                        );
+                        });
                     }
+                );
+            } else if (estadoProyectoInt === 5) {
+                // Configuración del correo para rechazo
+                mailOptions = {
+                    from: 'sistemaunidadterritorial@gmail.com',
+                    to: correoPostulante,
+                    subject: 'Notificación de Rechazo de Proyecto',
+                    text: `Su proyecto "${nombreProyecto}" ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
+                };
 
-                    res.json({ success: true, message: "Estado del proyecto cambiado exitosamente" });
-                }
-            );
+                // Obtener correos de usuarios con roles 1, 2, 3, 4, 6 (directiva y developer)
+                connection.query(
+                    "SELECT correo FROM usuario WHERE id_rol IN (1, 2, 3, 4, 6)",
+                    (error, roleResults) => {
+                        if (error) {
+                            console.error("Error al obtener correos de usuarios:", error);
+                            return res.status(500).json({ success: false, message: "Error al obtener correos de usuarios" });
+                        }
+                        correoUsuarios = roleResults.map(user => user.correo).join(",");
+
+                        // Enviar correo a todos los usuarios con los roles especificados
+                        const mailOptionsRoles = {
+                            from: 'sistemaunidadterritorial@gmail.com',
+                            to: correoUsuarios,
+                            subject: 'Rechazo de Proyecto',
+                            text: `El proyecto "${nombreProyecto}" ha sido rechazado.\n\nResolución: ${resolucion}\n\nFecha y hora de la resolución: ${new Date().toLocaleString()}\n\n¡Gracias!`,
+                        };
+
+                        // Enviar correos
+                        transporter.sendMail(mailOptions, (error) => {
+                            if (error) {
+                                console.error("Error al enviar el correo al postulante:", error);
+                            }
+                        });
+
+                        transporter.sendMail(mailOptionsRoles, (error) => {
+                            if (error) {
+                                console.error("Error al enviar correos a los usuarios:", error);
+                            }
+                        });
+                    }
+                );
+            }
+            res.json({ success: true, message: "Estado del proyecto cambiado exitosamente" });
+        }
+    );
         }
     );
 });
@@ -1710,14 +1720,16 @@ app.put("/api/modificarActividad", (req, res) => {
                         from: 'sistemaunidadterritorial@gmail.com',
                         to: correoOrganizador,
                         subject: 'Notificación de Rechazo de Actividad',
-                        text: `Lamentablemente, su actividad ha sido rechazada.\n\nDetalles:${motivo}\n- Fecha de rechazo: ${new Date().toLocaleString()}\n\nGracias por su comprensión.`,
+                        text: `Lamentablemente, su actividad ha sido rechazada.\n\nDetalles:\n- Fecha de rechazo: ${new Date().toLocaleString()}
+                        \n\nMotivo:${motivo}\n\nGracias por su comprensión.`,
                     };
                 } else if (id_estadoActividad === 5) {
                     mailOptions = {
                         from: 'sistemaunidadterritorial@gmail.com',
                         to: correoOrganizador,
                         subject: 'Notificación de Cancelación de Actividad',
-                        text: `Lamentablemente, su actividad ha sido cancelada.\n\nDetalles:${motivo}\n- Fecha de cancelación: ${new Date().toLocaleString()}\n\nGracias por su comprensión.`,
+                        text: `Lamentablemente, su actividad ha sido cancelada.\n\nDetalles:\n- Fecha de cancelación: ${new Date().toLocaleString()}
+                        \n\Motivo:${motivo}\n\nGracias por su comprensión.`,
                     };
                 } else {
                     return res.status(200).json({ success: true, message: "Cambio de estado de la solicitud de actividad exitoso" });
@@ -1786,7 +1798,7 @@ app.post("/api/inscribir", (req, res) => {
 
             // Obtener el cupo disponible para la actividad
             connection.query(
-                "SELECT cupo FROM actividad WHERE id_actividad = ?",
+                "SELECT cupo, nombre_actividad FROM actividad WHERE id_actividad = ?",
                 [id_actividad],
                 (error, results) => {
                     if (error || results.length === 0) {
@@ -1795,6 +1807,7 @@ app.post("/api/inscribir", (req, res) => {
                     }
 
                     const cupoDisponible = results[0].cupo;
+                    const nombreActividad = results[0].nombre_actividad;
 
                     // Verificar si hay suficiente cupo
                     if (totalInscripciones >= cupoDisponible) {
@@ -1816,7 +1829,7 @@ app.post("/api/inscribir", (req, res) => {
                                 from: 'sistemaunidadterritorial@gmail.com',
                                 to: correo,
                                 subject: 'Confirmación de Inscripción en Actividad',
-                                text: `¡Hola! Te has inscrito exitosamente en la actividad con ID ${id_actividad}. Fecha de inscripción: ${fecha_inscripcion.toLocaleString()}`,
+                                text: `¡Hola! Te has inscrito exitosamente en la actividad "${nombreActividad}". Fecha de inscripción: ${fecha_inscripcion.toLocaleString()}`,
                             };
 
                             transporter.sendMail(mailOptions, (error, info) => {
@@ -1927,48 +1940,65 @@ WHERE
 });
 
 // Cancelar inscripción por el usuario
-
 app.put('/api/cancelar-inscripcion/:idInscripcion', (req, res) => {
     const idInscripcion = req.params.idInscripcion;
     const fecha_cancelacion = new Date();
     const motivoCancelacion = "Cancelada por el usuario";
     const { correo } = req.body;
-    console.log(correo);
-    // Actualizar la inscripción con el estado de cancelación
+
+    // Obtener el nombre de la actividad asociada a la inscripción
     connection.query(
-        `UPDATE inscripcion 
-         SET id_estadoInscripcion = 2, motivoCancelacion = ?, fecha_cancelacion = ? 
-         WHERE id_inscripcion = ?`,
-        [motivoCancelacion, fecha_cancelacion, idInscripcion],
+        `SELECT a.nombre_actividad 
+         FROM inscripcion i 
+         JOIN actividad a ON i.id_actividad = a.id_actividad 
+         WHERE i.id_inscripcion = ?`,
+        [idInscripcion],
         (error, results) => {
-            if (error) {
-                console.error("Error al cancelar inscripción:", error);
-                return res.status(500).json({ success: false, message: "Error al cancelar la inscripción." });
+            if (error || results.length === 0) {
+                console.error("Error al obtener el nombre de la actividad:", error);
+                return res.status(500).json({ success: false, message: "Error al obtener el nombre de la actividad." });
             }
 
-            if (results.affectedRows === 0) {
-                return res.status(404).json({ success: false, message: "Inscripción no encontrada." });
-            }
+            const nombreActividad = results[0].nombre_actividad;
 
-            // Enviar correo de confirmación al usuario
-            const mailOptions = {
-                from: 'sistemaunidadterritorial@gmail.com',
-                to: correo,
-                subject: 'Confirmación de Cancelación de Inscripción',
-                text: `Tu inscripción con ID ${idInscripcion} ha sido cancelada exitosamente. Motivo: ${motivoCancelacion}. Fecha de cancelación: ${fecha_cancelacion.toLocaleString()}`,
-            };
+            // Actualizar la inscripción con el estado de cancelación
+            connection.query(
+                `UPDATE inscripcion 
+                 SET id_estadoInscripcion = 2, motivoCancelacion = ?, fecha_cancelacion = ? 
+                 WHERE id_inscripcion = ?`,
+                [motivoCancelacion, fecha_cancelacion, idInscripcion],
+                (error, results) => {
+                    if (error) {
+                        console.error("Error al cancelar inscripción:", error);
+                        return res.status(500).json({ success: false, message: "Error al cancelar la inscripción." });
+                    }
 
-            transporter.sendMail(mailOptions, (error, info) => {
-                if (error) {
-                    console.error("Error al enviar el correo:", error);
-                    return res.status(500).json({ success: false, message: "Inscripción cancelada, pero no se pudo enviar el correo de confirmación." });
+                    if (results.affectedRows === 0) {
+                        return res.status(404).json({ success: false, message: "Inscripción no encontrada." });
+                    }
+
+                    // Enviar correo de confirmación al usuario
+                    const mailOptions = {
+                        from: 'sistemaunidadterritorial@gmail.com',
+                        to: correo,
+                        subject: 'Confirmación de Cancelación de Inscripción',
+                        text: `Tu inscripción en la actividad "${nombreActividad}" ha sido cancelada exitosamente. Motivo: ${motivoCancelacion}. Fecha de cancelación: ${fecha_cancelacion.toLocaleString()}`,
+                    };
+
+                    transporter.sendMail(mailOptions, (error, info) => {
+                        if (error) {
+                            console.error("Error al enviar el correo:", error);
+                            return res.status(500).json({ success: false, message: "Inscripción cancelada, pero no se pudo enviar el correo de confirmación." });
+                        }
+                        console.log("Correo de confirmación enviado:", info.response);
+                        res.json({ success: true, message: "Inscripción cancelada con éxito y correo de confirmación enviado." });
+                    });
                 }
-                console.log("Correo de confirmación enviado:", info.response);
-                res.json({ success: true, message: "Inscripción cancelada con éxito y correo de confirmación enviado." });
-            });
+            );
         }
     );
 });
+
 // Endpoint para obtener las inscripciones
 app.get('/api/obtenerInscripciones', (req, res) => {
     const query = `
@@ -2005,23 +2035,25 @@ app.put('/api/cancelarInscripcion/:id', (req, res) => {
     const { id_estadoInscripcion, motivoCancelacion } = req.body;
     const fecha_cancelacion = new Date();
 
-    // Primero, obtener el id_usuario y el correo del usuario según la inscripción
-    const getUserQuery = `
-        SELECT u.correo 
+    // Primero, obtener el id_usuario, correo del usuario y el nombre de la actividad según la inscripción
+    const getUserAndActivityQuery = `
+        SELECT u.correo, a.nombre_actividad 
         FROM usuario u 
         JOIN inscripcion i ON u.id_usuario = i.id_usuario 
+        JOIN actividad a ON i.id_actividad = a.id_actividad
         WHERE i.id_inscripcion = ?`;
 
-    connection.query(getUserQuery, [id], (err, results) => {
+    connection.query(getUserAndActivityQuery, [id], (err, results) => {
         if (err) {
-            console.error('Error al obtener el correo del usuario:', err);
-            return res.status(500).json({ message: 'Error al obtener el correo del usuario.' });
+            console.error('Error al obtener los datos del usuario y actividad:', err);
+            return res.status(500).json({ message: 'Error al obtener los datos del usuario y actividad.' });
         }
         if (results.length === 0) {
-            return res.status(404).json({ message: 'Usuario no encontrado para esta inscripción.' });
+            return res.status(404).json({ message: 'Inscripción no encontrada.' });
         }
 
         const correoUsuario = results[0].correo;
+        const nombreActividad = results[0].nombre_actividad;
 
         // Proceder con la cancelación de la inscripción
         const cancelQuery = `
@@ -2038,12 +2070,12 @@ app.put('/api/cancelarInscripcion/:id', (req, res) => {
                 return res.status(404).json({ message: 'Inscripción no encontrada.' });
             }
 
-
+            // Enviar correo de confirmación al usuario con el nombre de la actividad
             const mailOptions = {
                 from: 'sistemaunidadterritorial@gmail.com',
                 to: correoUsuario,
                 subject: 'Confirmación de Cancelación de Inscripción',
-                text: `La inscripción ha sido cancelada. Motivo de cancelación: ${motivoCancelacion}. Fecha de cancelación: ${fecha_cancelacion.toLocaleString()}`
+                text: `Tu inscripción en la actividad "${nombreActividad}" ha sido cancelada. Motivo de cancelación: ${motivoCancelacion}. Fecha de cancelación: ${fecha_cancelacion.toLocaleString()}`
             };
 
             // Enviar correo de confirmación
@@ -2057,6 +2089,7 @@ app.put('/api/cancelarInscripcion/:id', (req, res) => {
         });
     });
 });
+
 
 app.get('/api/historial-inscripciones', (req, res) => {
     const query = `
@@ -2094,8 +2127,6 @@ app.get('/api/historial-inscripciones', (req, res) => {
 // 5	vecino
 // 6	Developer
 
-// Faltan proteger mas páginas de gestión de recursos
-
 // Gestión usuarios
 app.get('/gestion_usuarios.html', checkRole([1, 4, 6]), (req, res) => {
     res.sendFile(path.join(__dirname, 'gestion_usuarios/gestion_usuarios.html'));
@@ -2110,11 +2141,35 @@ app.get('/gestion_reservas.html', checkRole([1, 4, 6]), (req, res) => {
 });
 // Gestión MIS reservas
 app.get('/mis_reservas.html', checkRole([1, 2, 3, 4, 5, 6]), (req, res) => {
-    res.sendFile(path.join(__dirname, 'profile/mis_reservas.html'));
+    res.sendFile(path.join(__dirname, 'reserva/mis_reservas.html'));
+});
+// Gestión MIS inscripciones
+app.get('/mis_inscripciones.html', checkRole([1, 2, 3, 4, 5, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'actividad/mis_inscripciones.html'));
 });
 // Gestión noticias
-app.get('/gestion_noticia.html', checkRole([1, 2, 4, 6]), (req, res) => {
+app.get('/gestion_noticia.html', checkRole([1, 2, 3, 4, 6]), (req, res) => {
     res.sendFile(path.join(__dirname, 'noticia/gestion_noticia.html'));
 });
-
+// Gestión actividades
+app.get('/gestion_actividad.html', checkRole([1, 2, 3, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'actividad/gestion_actividad.html'));
+});
+// Gestión proyectos
+app.get('/gestion_proyectos.html', checkRole([1, 2, 3, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'proyecto/gestion_proyectos.html'));
+});
+// Ver proyectos
+app.get('/ver_proyecto.html', checkRole([1, 2, 3, 4, 6]), (req, res) => {
+    const proyectoId = req.query.id;
+    res.json({ id: proyectoId, htmlPath: 'proyecto/ver_proyecto.html' });
+});
+// Gestión inscripciones
+app.get('/gestion_inscripciones.html', checkRole([1, 2, 3, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'actividad/gestion_inscripciones.html'));
+});
+// index directiva
+app.get('/index_directiva.html', checkRole([1, 2, 3, 4, 6]), (req, res) => {
+    res.sendFile(path.join(__dirname, 'app/index_directiva.html'));
+});
 

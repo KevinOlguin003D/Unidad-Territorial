@@ -11,7 +11,6 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: #f0f2f5;
 }
 
 .login-card {
@@ -51,7 +50,7 @@ label {
 input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ddd;
+  border: 1px solid black;
   border-radius: 4px;
   font-size: 1rem;
   transition: border-color 0.3s ease;

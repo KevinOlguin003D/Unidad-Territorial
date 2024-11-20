@@ -13,12 +13,20 @@
     body {
       font-family: Arial, Helvetica, sans-serif;
   }
+  h3{
+    font-family: Arial, Helvetica, sans-serif;
+    color: black;
+    font-size: 20px;
+    text-decoration: none;
+    text-align: center;
+  }
   </style>
   <script src="../cambio_header.js"></script>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="stylesheet" href="app.component.css">
+  <link rel="stylesheet" href="../app.component.css">
+  <link rel="stylesheet" href="../styles.css">
   <style> /* se aplica style ya que no me cambia el color de titulo en el css */
     body { 
       background-image: url('../imagenes/image.png');
@@ -35,48 +43,42 @@
         <ul id="nav-menu"></ul>
      </nav>
     </div>
-    <div class="flex">
-     <i class="fas fa-search text-green-500">
-     </i>
-     <span class="ml-2 text-green-500">
-       <input type="text" placeholder="Buscar...">
-       <input type="submit" value="Buscar">
-     </span>
-    </div>
+    
    </div>
-   <section class="section">
-    <h2 style="text-align: center;">Reserva de recursos</h2>
+<div  class="container-white">
+  <h2 style="text-align: center;">Reserva de recursos</h2>
+  <p>La junta de vecinos pone a disposición de la comunidad diversos recursos como la cancha, la sala de eventos, la sede de la junta de vecinos o áreas de la plaza. Estos espacios pueden ser reservados por los vecinos para actividades como reuniones, eventos sociales, actividades deportivas o iniciativas comunitarias.</p>
     <div class="grid">
-      <div>
+      <div style="width: 500px; height: 500px; display: flex; justify-content: center; align-items: center;">
         <a href="reserva/cancha.html">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/22/Cancha_sintetica.jpg" alt="Cancha">
+        <img src="../imagenes/cancha.jpg" style="max-width: 500px; max-height: 500px; " alt="Cancha">
         <h3>Reserva un horario de la cancha</h3>
         <p><p>
         </a>
       </div>
-      <div>
+      <div style="width: 500px; height: 500px; display: flex; justify-content: center; align-items: center;">
         <a href="reserva/sede.html">
-        <img src="https://www.codelco.com/prontus_codelco/site/artic/20160606/imag/foto_0000000220160606114557.jpg" alt="Sede">
+        <img src="../imagenes/sede.jpg" alt="Sede">
         <h3>Reserva un horario de la sede</h3>
         <p><p>
         </a>
       </div>
-      <div>
+      <div style="width: 500px; height: 500px; display: flex; justify-content: center; align-items: center;">
         <a href="reserva/plaza.html">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/Fuente_Peque%C3%B1a_de_la_Plaza_de_la_Paz.jpg" alt="Plaza">
+        <img src="../imagenes/plaza.jpg" alt="Plaza">
         <h3>Reserva un horario de la plaza</h3>
         <p><p>
         </a>
       </div>
-      <div>
+      <div style="width: 500px; height: 500px; display: flex; justify-content: center; align-items: center;">
         <a href="reserva/salaevento.html">
-        <img src="https://images.squarespace-cdn.com/content/v1/5dc1dbb5be82ec3a21427fe6/1675363840954-APYPIS6G688GRNLCO55Z/IMG_7937.jpg" alt="SalaEvento">
+        <img src="../imagenes/sala_de_eventos.jpg" alt="SalaEvento">
         <h3>Reserva un horario de la sala de eventos</h3>
         <p><p>
         </a>
       </div>
       
-    </section>
+    </div>
   </body>
   <app-root></app-root>
   

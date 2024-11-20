@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Certificados</title>
+    <a href="../index.html" style="text-decoration: none;">
+    <h1 style="text-align: center;">Unidad Vecinal</h1>
+    </a>
     <style>
         h1 {
           color: #17f407;
-          font-size: 0px;
         }
         h2 {
             color: #17f407;
@@ -21,7 +23,10 @@
           background-size: cover;
         }
       </style>
-
+      <script src="../cambio_header.js"></script>
+      <link rel="stylesheet" href="../app.component.css">
+      <link rel="stylesheet" href="../styles.css">
+      <link rel="stylesheet" href="../certificado/certificado.css">
       <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
       <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&amp;display=swap" rel="stylesheet"/>
 
@@ -34,36 +39,26 @@
             <ul id="nav-menu"></ul>
          </nav>
         </div>
-        <div class="flex">
-            <i class="fas fa-search text-green-500">
-            </i>
-            <span class="ml-2 text-green-500">
-              <input type="text" placeholder="Buscar...">
-              <input type="submit" value="Buscar">
-            </span>
-           </div>
        </div>
     <div class="container-white">
-    <h1>Gestión de Certificados</h1>
-    <table id="certificadosTable">
+    <h1 class="titleContent">Gestión de Certificados</h1>
+    <table class="table" id="certificadosTable">
         <thead>
-            <tr>
-                <th>Id</th>
-                <th>RUT</th>
-                <th>Nombre</th>
-                <th>Domicilio</th>
-                <th>Motivo</th>
-                <th>Fecha</th>
-                <th>Hora</th>
-                <th>Descargar</th>
+            <tr class="row header green">
+                <th class="cell">Id</th>
+                <th class="cell">RUT</th>
+                <th class="cell">Nombre</th>
+                <th class="cell">Domicilio</th>
+                <th class="cell">Motivo</th>
+                <th class="cell">Fecha</th>
+                <th class="cell">Hora</th>
+                <th class="cell">Descargar</th>
                 
             </tr>
         </thead>
         <tbody>
-            <!-- Las filas se llenarán dinámicamente con JavaScript -->
         </tbody>
     </table>
-    <link rel="stylesheet" href="../certificado/certificado.css">
     <script src="gestion_certificados.js"></script>
 </body>
 </html>

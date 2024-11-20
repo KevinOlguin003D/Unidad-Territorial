@@ -4,11 +4,13 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="../cambio_header.js"></script>
-        <a href="index.html" style="text-decoration: none;">
+        <link rel="stylesheet" href="../styles.css">
+        <link rel="stylesheet" href="../app.component.css">
+        <a href="../index.html" style="text-decoration: none;">
           <h1 style="text-align: center;">Unidad Vecinal</h1>
           </a>
         
-        <style> /* se aplica style ya que no me cambia el color de titulo en el css */
+        <style>
           h1 {
             color: #17f407;
           }
@@ -35,19 +37,20 @@
           <ul id="nav-menu"></ul>
        </nav>
        </div>
-       <div class="flex">
-        <i class="fas fa-search text-green-500">
-        </i>
-        <span class="ml-2 text-green-500">
-          <input type="text" placeholder="Buscar...">
-          <input type="submit" value="Buscar">
-        </span>
-       </div>
       </div>
      </body>
      <body>
   <section class="section">
-    <h2 style="text-align: center;">La Directiva</h2>
+
+    <div class="container-white">
+      <h1 class="titleContent">Miembros y Directiva</h1>
+      <p>Ser miembro de una junta de vecinos implica participar activamente en la mejora y desarrollo de la comunidad, creando actividades, inscribiéndose en ellas y postulando proyectos que beneficien al vecindario. Además, los miembros colaboran en la ejecución de iniciativas y en la resolución de problemas comunes.</p>
+      <p>Dentro de la junta, la directiva juega un papel clave al liderar y coordinar las acciones del grupo. Está conformada por roles como presidente, secretario y tesorero, quienes se encargan de representar al vecindario ante autoridades, gestionar recursos y garantizar el cumplimiento de los acuerdos establecidos por los miembros.</p>
+      <p style="text-align: center; font-weight: bold;">Si deseas inscribirte como miembro puedes hacerlo aquí</p>
+      <a class="button-Registrarse" href="../registro/registro_component.html">Inscríbete</a>
+      <p style="text-align: center; font-weight: bold;">Si ya eres miembro inicia sesión aquí</p>
+      <a class="button-Registrarse" href="../login/login_component.html">Iniciar sesión</a>
+      <p style="text-align: center; font-weight: bold; font-size: 20px;">Roles de la directiva</p>
     <div class="grid">
       <div>
         <img src='../imagenes/secretaria.jpg' alt="Noticia 1">
@@ -71,6 +74,7 @@
           <p>*Presenta informes económicos a los socios.</p>
       </div>
     </div>
+  </div>
   </section>
 </body>
 </html>

@@ -18,15 +18,14 @@ async function agregarEnlacesAlMenu() {
     // Enlaces comunes para todos los usuarios (no logueados)
     navContainer.innerHTML += `
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../index.html">Inicio</a>
-        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../reserva/home_reserva.html">Reservas</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../noticia/noticia.html">Noticias</a>
+        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../actividad/ver_actividades.html">Actividades</a>
+        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../reserva/home_reserva.html">Reservas</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../certificado/solicitar_certificado.html">Certificados</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../miembros/miembros.html">Miembros</a>
-        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../profile/perfil_usuario.html">Perfil</a>
-        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../actividad/ver_actividades.html">Actividades</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../proyecto/home_proyecto.html">Proyectos</a>
         <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../registro/registro_component.html">Registrarse</a>
-        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../ayuda/registro_component.html">Ayuda</a>
+        <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../ayuda/ayuda.html">Ayuda</a>
 
     `;
 
@@ -42,6 +41,25 @@ async function agregarEnlacesAlMenu() {
             if ([1, 2, 3, 4, 6].includes(Number(userRole))) {
                 navContainer.innerHTML += `
                     <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../index_directiva.html">Gestión de recursos</a>
+                `;
+            }
+            
+        }
+    } catch (error) {
+        console.error('Error al verificar la autenticación:', error);
+    }
+    // Agregar botón "perfil" en el header
+    try {
+        const response = await fetch('/api/check-auth');
+        const data = await response.json();
+        console.log('Respuesta de la API:', data);
+
+        if (data.authenticated) {
+            const userRole = data.userRole;
+            console.log('rol: ' + userRole);
+            if ([1, 2, 3, 4, 5, 6].includes(Number(userRole))) {
+                navContainer.innerHTML += `
+                    <a class="text-green-500 px-4 py-2 rounded hover:bg-gray-200" href="../profile/perfil_usuario.html">Perfil</a>
                 `;
             }
             

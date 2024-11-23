@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
         noticias.slice(0, 3).forEach(noticia => {
           const noticiaDiv = document.createElement('div');
+          noticiaDiv.classList.add('noticiaGrid');
   
           // Crear el enlace con la URL relativa
           const enlace = document.createElement('a');

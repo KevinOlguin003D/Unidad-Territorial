@@ -6,13 +6,6 @@
 {
     text-align: left;
 }
-
-body {
-    font-family: Arial, sans-serif;
-    background-color: #d3d3d3;
-    margin: 0;
-    padding: 0;
-}
 .container-proyecto{
     display: flex;
     justify-content: space-between;
@@ -91,7 +84,6 @@ body {
     box-sizing: border-box;
     color: #fff;
     cursor: pointer;
-    font-family: Montserrat, sans-serif;
     font-size: .9em;
     margin: 5px auto ;
     padding: 10px 15px;
@@ -108,10 +100,7 @@ body {
         width: 85%;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
         display: table;
-        font-family: Montserrat, sans-serif;
         text-align: center;
-        
-  
       }
       
       @media screen and (max-width: 580px) {
@@ -199,7 +188,6 @@ body {
         box-sizing: border-box;
         color: #fff;
         cursor: pointer;
-        font-family: Montserrat, sans-serif;
         font-size: .9em;
         margin: 5px auto ;
         padding: 10px 15px;
@@ -224,7 +212,6 @@ body {
       box-sizing: border-box;
       color: #fff;
       cursor: pointer;
-      font-family: Montserrat, sans-serif;
       font-size: .9em;
       margin: 5px auto ;
       padding: 10px 15px;
@@ -245,7 +232,6 @@ body {
       box-sizing: border-box;
       color: #fff;
       cursor: pointer;
-      font-family: Montserrat, sans-serif;
       font-size: .9em;
       margin: 5px auto ;
       padding: 10px 15px;
@@ -272,7 +258,6 @@ body {
   border: 1px solid #ddd;
   border-radius: 8px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-  font-family: Arial, sans-serif;
 }
 
 #postularProyectoForm label {

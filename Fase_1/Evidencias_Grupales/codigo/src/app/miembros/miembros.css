@@ -24,14 +24,7 @@
    .text-white {
     color: #ffffff;
    }
-   .text-green-500 {  /* Formato del menu */
-    color: #17f407;
-    font-size: 1.2rem;
-    font-weight: bold;
-    margin-bottom: 0.3rem;
-    text-decoration: none;
-  
-   }
+
    .px-4 {
     padding-left: 1rem;
     padding-right: 1rem;

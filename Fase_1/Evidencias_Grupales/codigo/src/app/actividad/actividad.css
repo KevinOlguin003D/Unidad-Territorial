@@ -28,6 +28,7 @@
     .actividad {
         background-color: white;
         border-radius: 5px;
+        border: 1px solid #ddd;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         margin: 10px;
         padding: 20px;
@@ -259,4 +260,18 @@
           display: block;
         }
       }
-      
+      .actividad-container {
+        text-align: center;
+        background-color: #ffffff;
+        padding: 20px;
+        border: 1px solid #ddd;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        width: 50%;
+        margin: auto;
+        border-radius: 10px;
+        margin-top: 1%;
+        margin-bottom: 1%;
+    }
+    .text-actividad{
+      text-align: left;
+  }

@@ -1,4 +1,6 @@
+document.addEventListener("DOMContentLoaded", function() {
 document.getElementById("postularProyectoForm").addEventListener("submit", async function(event) {
+    event.preventDefault();
     
     // Verifica el rol del usuario al cargar la página
     try {
@@ -22,7 +24,7 @@ document.getElementById("postularProyectoForm").addEventListener("submit", async
         window.location.href = '/login/login_component.html';
         return;
     }
-    event.preventDefault();
+
 
     const nombre = document.getElementById("nombre").value;
     const presupuesto_estimado = document.getElementById("presupuesto_estimado").value;
@@ -67,4 +69,5 @@ document.getElementById("postularProyectoForm").addEventListener("submit", async
         console.error("Error:", error);
         alert("Ocurrió un error al enviar el proyecto");
     });
+});
 });
